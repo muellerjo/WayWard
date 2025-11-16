@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Maschinen - Wegewart-System{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Maschinen</h1>
+        {% if user_role in ['admin', 'ortsvorsteher'] %}
+        <button type="button" class="btn btn-primary" onclick="addNewRow()">
+            <i class="bi bi-plus-circle"></i> Neue Maschine
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('machines.machines') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="category_filter" class="form-label">Kategorie</label>
+                    <select class="form-select" id="category_filter" name="category_filter">
+                        <option value="">Alle</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}" {% if request.args.get('category_filter') == cat %}selected{% endif %}>
+                            {{ cat }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="status_filter" class="form-label">Status</label>
+                    <select class="form-select" id="status_filter" name="status_filter">
+                        <option value="">Alle</option>
+                        <option value="aktiv" {% if request.args.get('status_filter') == 'aktiv' %}selected{% endif %}>Aktiv</option>
+                        <option value="inaktiv" {% if request.args.get('status_filter') == 'inaktiv' %}selected{% endif %}>Inaktiv</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-secondary me-2">
+                        <i class="bi bi-funnel"></i> Filtern
+                    </button>
+                    <a href="{{ url_for('machines.machines') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Machines Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm" id="machinesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;">ID</th>
+                            <th style="width: 250px;">Bezeichnung</th>
+                            <th style="width: 150px;">Kategorie</th>
+                            <th style="width: 120px;">Gültig von</th>
+                            <th style="width: 120px;">Gültig bis</th>
+                            <th style="width: 100px;">Status</th>
+                            {% if user_role in ['admin', 'ortsvorsteher'] %}
+                            <th style="width: 150px;">Aktionen</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody id="machinesTableBody">
+                        {% if machines %}
+                        {% for machine in machines %}
+                        <tr id="row-{{ machine['id'] }}" data-machine-id="{{ machine['id'] }}" {% if not machine['aktiv'] %}class="table-secondary"{% endif %}>
+                            <td>{{ machine['id'] }}</td>
+                            <td>
+                                <span class="view-mode">{{ machine['name'] }}</span>
+                                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                                <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ machine['name'] }}" data-field="name">
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="view-mode">{{ machine['category'] or '-' }}</span>
+                                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                                <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ machine['category'] or '' }}" data-field="category" list="categoryList">
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="view-mode">
+                                    {% if machine['valid_from_datetime'] %}
+                                        {{ machine['valid_from_datetime'][:10] }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </span>
+                                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                                <input type="date" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ machine['valid_from_datetime'][:10] if machine['valid_from_datetime'] else '' }}" data-field="valid_from_datetime">
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="view-mode">
+                                    {% if machine['valid_to_datetime'] %}
+                                        {{ machine['valid_to_datetime'][:10] }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </span>
+                                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                                <input type="date" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ machine['valid_to_datetime'][:10] if machine['valid_to_datetime'] else '' }}" data-field="valid_to_datetime">
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="view-mode">
+                                    {% if machine['aktiv'] %}
+                                    <span class="badge bg-success">Aktiv</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inaktiv</span>
+                                    {% endif %}
+                                </span>
+                                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="aktiv">
+                                    <option value="1" {% if machine['aktiv'] %}selected{% endif %}>Aktiv</option>
+                                    <option value="0" {% if not machine['aktiv'] %}selected{% endif %}>Inaktiv</option>
+                                </select>
+                                {% endif %}
+                            </td>
+                            {% if user_role in ['admin', 'ortsvorsteher'] %}
+                            <td>
+                                <div class="view-mode">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editRow('{{ machine['id'] }}')" title="Bearbeiten">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% if machine['aktiv'] %}
+                                    <button class="btn btn-sm btn-outline-warning" onclick="toggleStatus('{{ machine['id'] }}', 0)" title="Deaktivieren">
+                                        <i class="bi bi-pause-circle"></i>
+                                    </button>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-outline-success" onclick="toggleStatus('{{ machine['id'] }}', 1)" title="Aktivieren">
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteRow('{{ machine['id'] }}')" title="Löschen">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="edit-mode" style="display:none;">
+                                    <button class="btn btn-sm btn-success" onclick="saveRow('{{ machine['id'] }}')" title="Speichern">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" onclick="cancelEdit('{{ machine['id'] }}')" title="Abbrechen">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr id="noDataRow">
+                            <td colspan="{% if user_role in ['admin', 'ortsvorsteher'] %}7{% else %}6{% endif %}" class="text-center text-muted">
+                                Keine Maschinen gefunden.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Datalist for category autocomplete -->
+<datalist id="categoryList">
+    {% for cat in categories %}
+    <option value="{{ cat }}">
+    {% endfor %}
+</datalist>
+
+<script>
+// Store original data for cancel functionality
+let originalData = {};
+let editingRowId = null;
+
+function addNewRow() {
+    // Remove "no data" row if it exists
+    const noDataRow = document.getElementById('noDataRow');
+    if (noDataRow) {
+        noDataRow.remove();
+    }
+    
+    const tbody = document.getElementById('machinesTableBody');
+    const newId = 'new-' + Date.now();
+    const today = new Date().toISOString().split('T')[0];
+    
+    const newRow = `
+        <tr id="row-${newId}" data-machine-id="${newId}" class="table-info">
+            <td>-</td>
+            <td><input type="text" class="form-control form-control-sm" placeholder="Bezeichnung" data-field="name" required></td>
+            <td><input type="text" class="form-control form-control-sm" placeholder="Kategorie" data-field="category" list="categoryList"></td>
+            <td><input type="date" class="form-control form-control-sm" value="${today}" data-field="valid_from_datetime"></td>
+            <td><input type="date" class="form-control form-control-sm" data-field="valid_to_datetime"></td>
+            <td>
+                <select class="form-select form-select-sm" data-field="aktiv">
+                    <option value="1" selected>Aktiv</option>
+                    <option value="0">Inaktiv</option>
+                </select>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-success" onclick="saveNewRow('${newId}')" title="Speichern">
+                    <i class="bi bi-check"></i>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="cancelNewRow('${newId}')" title="Abbrechen">
+                    <i class="bi bi-x"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+    
+    tbody.insertAdjacentHTML('afterbegin', newRow);
+}
+
+function editRow(machineId) {
+    if (editingRowId && editingRowId !== machineId) {
+        alert('Bitte speichern oder abbrechen Sie die aktuelle Bearbeitung zuerst.');
+        return;
+    }
+    
+    const row = document.querySelector(`#row-${machineId}`);
+    const viewElements = row.querySelectorAll('.view-mode');
+    const editElements = row.querySelectorAll('.edit-mode');
+    
+    // Store original data
+    originalData[machineId] = {};
+    editElements.forEach(el => {
+        if (el.dataset.field) {
+            originalData[machineId][el.dataset.field] = el.value;
+        }
+    });
+    
+    viewElements.forEach(el => el.style.display = 'none');
+    editElements.forEach(el => el.style.display = 'block');
+    
+    editingRowId = machineId;
+}
+
+function cancelEdit(machineId) {
+    const row = document.querySelector(`#row-${machineId}`);
+    const viewElements = row.querySelectorAll('.view-mode');
+    const editElements = row.querySelectorAll('.edit-mode');
+    
+    // Restore original data
+    if (originalData[machineId]) {
+        editElements.forEach(el => {
+            if (el.dataset.field && originalData[machineId][el.dataset.field] !== undefined) {
+                el.value = originalData[machineId][el.dataset.field];
+            }
+        });
+    }
+    
+    viewElements.forEach(el => el.style.display = 'block');
+    editElements.forEach(el => el.style.display = 'none');
+    
+    editingRowId = null;
+}
+
+function saveRow(machineId) {
+    const row = document.querySelector(`#row-${machineId}`);
+    const editElements = row.querySelectorAll('.edit-mode[data-field]');
+    
+    const data = { machine_id: machineId };
+    editElements.forEach(el => {
+        data[el.dataset.field] = el.value;
+    });
+    
+    fetch("{{ url_for('machines.update_machine') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Speichern: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Speichern: ' + error);
+    });
+}
+
+function saveNewRow(tempId) {
+    const row = document.querySelector(`#row-${tempId}`);
+    const inputs = row.querySelectorAll('[data-field]');
+    
+    const data = {};
+    inputs.forEach(input => {
+        data[input.dataset.field] = input.value;
+    });
+    
+    // Validate required fields
+    if (!data.name) {
+        alert('Bitte Bezeichnung eingeben.');
+        return;
+    }
+    
+    fetch("{{ url_for('machines.create_machine') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Erstellen: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Erstellen: ' + error);
+    });
+}
+
+function cancelNewRow(tempId) {
+    const row = document.querySelector(`#row-${tempId}`);
+    row.remove();
+    
+    // Add "no data" row back if table is empty
+    const tbody = document.getElementById('machinesTableBody');
+    if (tbody.children.length === 0) {
+        const colspan = {{ '7' if user_role in ['admin', 'ortsvorsteher'] else '6' }};
+        tbody.innerHTML = `<tr id="noDataRow"><td colspan="${colspan}" class="text-center text-muted">Keine Maschinen gefunden.</td></tr>`;
+    }
+}
+
+function deleteRow(machineId) {
+    if (!confirm('Möchten Sie diese Maschine wirklich löschen?')) {
+        return;
+    }
+    
+    fetch("{{ url_for('machines.delete_machine') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ machine_id: machineId })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Löschen: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Löschen: ' + error);
+    });
+}
+
+function toggleStatus(machineId, newStatus) {
+    const action = newStatus === 1 ? 'aktivieren' : 'deaktivieren';
+    if (!confirm(`Möchten Sie diese Maschine wirklich ${action}?`)) {
+        return;
+    }
+    
+    fetch("{{ url_for('machines.update_machine') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+            machine_id: machineId,
+            aktiv: newStatus
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Status ändern: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Status ändern: ' + error);
+    });
+}
+</script>
+{% endblock %}

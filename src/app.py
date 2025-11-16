@@ -28,7 +28,8 @@ from routes_jobs import jobs_bp
 # Register blueprints
 app.register_blueprint(jobs_bp)
 
-
+from routes_machines import machines_bp
+app.register_blueprint(machines_bp)
 # ==================== Init DB on first startup ====================
 # Initialize database WITH application context
 with app.app_context():
