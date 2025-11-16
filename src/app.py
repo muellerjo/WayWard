@@ -728,14 +728,18 @@ def admin_user_modify(benutzer_id):
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip() or None
         ortsteil = request.form.get('ortsteil')
-        rolle = request.form.get('rolle')
+        
+        # Get ALL selected roles as a list and join them with commas
+        selected_roles = request.form.getlist('rolle')  # Changed from get to getlist
+        rolle = ','.join(selected_roles)  # Join multiple roles with comma
+        
         aktiv = 1 if request.form.get('aktiv') == 'on' else 0
         neues_passwort = request.form.get('neues_passwort', '').strip()
         neues_passwort_confirm = request.form.get('neues_passwort_confirm', '').strip()
         
-        # Validierung
-        if not all([vorname, name, ortsteil, rolle]):
-            flash('Bitte alle Pflichtfelder ausfüllen', 'danger')
+        # Validierung - check that at least one role is selected
+        if not all([vorname, name, ortsteil]) or not selected_roles:
+            flash('Bitte alle Pflichtfelder ausfüllen und mindestens eine Rolle auswählen', 'danger')
             return render_template('admin_user_modify.html', user=get_current_user(), benutzer_edit=benutzer_edit)
         
         # Passwort ändern (falls angegeben)
@@ -839,6 +843,7 @@ def status_text(status):
     }
     return texts.get(status, status)
 
+#role badges, as used in the users list, showing multiple badges for multiple roles
 @app.template_filter('role_badge')
 def role_badge(role_code):
     """Formatiert eine Rolle als farbiges Badge mit Namen aus der Datenbank"""
