@@ -49,9 +49,9 @@
                             <i class="bi bi-truck"></i> Maschinen
                         </a>
                     </li>
-                    {% if user.roles|has_role('admin') or user.roles|has_role('verwaltung') %}
+                    {% if user.roles|has_role('admin') or user.roles|has_role('verwaltung')  or user.roles|has_role('ortsvorsteher')%}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_benutzer') }}">
+                        <a class="nav-link" href="{{ url_for('admin_user') }}">
                             <i class="bi bi-people"></i> Benutzer
                         </a>
                     </li>

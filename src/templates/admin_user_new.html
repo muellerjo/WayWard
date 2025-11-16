@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Neuer Benutzer - Wegewart-System{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <a href="{{ url_for('admin_user') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück zur Übersicht
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-person-plus"></i> Neuen Benutzer anlegen</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin_user_new') }}">
+                    <!-- Login-Daten -->
+                    <h5 class="mb-3"><i class="bi bi-shield-lock"></i> Login-Daten</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="benutzername" class="form-label">Benutzername *</label>
+                            <input type="text" class="form-control" id="benutzername" name="benutzername" 
+                                   value="{{ request.form.get('benutzername', '') }}" required>
+                            <small class="text-muted">Nur Kleinbuchstaben, Zahlen, Punkt und Unterstrich</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="passwort" class="form-label">Passwort *</label>
+                            <input type="password" class="form-control" id="passwort" name="passwort" 
+                                   minlength="6" required>
+                            <small class="text-muted">Mindestens 6 Zeichen</small>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Persönliche Daten -->
+                    <h5 class="mb-3"><i class="bi bi-person"></i> Persönliche Daten</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="vorname" class="form-label">Vorname *</label>
+                            <input type="text" class="form-control" id="vorname" name="vorname" 
+                                   value="{{ request.form.get('vorname', '') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Nachname *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ request.form.get('name', '') }}" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="{{ request.form.get('email', '') }}">
+                        <small class="text-muted">Optional - für Benachrichtigungen</small>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Zuordnung -->
+                    <h5 class="mb-3"><i class="bi bi-briefcase"></i> Zuordnung</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="ortsteil" class="form-label">Ortsteil *</label>
+                            <select class="form-select" id="ortsteil" name="ortsteil" required>
+                                <option value="">-- Bitte wählen --</option>
+                                <option value="Krenkingen" {% if request.form.get('ortsteil') == 'Krenkingen' %}selected{% endif %}>Krenkingen</option>
+                                <option value="Dangstetten" {% if request.form.get('ortsteil') == 'Dangstetten' %}selected{% endif %}>Dangstetten</option>
+                                <option value="Oberlauchringen" {% if request.form.get('ortsteil') == 'Oberlauchringen' %}selected{% endif %}>Oberlauchringen</option>
+                                <option value="Unterlauchringen" {% if request.form.get('ortsteil') == 'Unterlauchringen' %}selected{% endif %}>Unterlauchringen</option>
+                                <option value="Tiengen" {% if request.form.get('ortsteil') == 'Tiengen' %}selected{% endif %}>Tiengen</option>
+                                <option value="Verwaltung" {% if request.form.get('ortsteil') == 'Verwaltung' %}selected{% endif %}>Verwaltung</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="rolle" class="form-label">Rolle *</label>
+                            <select class="form-select" id="rolle" name="rolle" required>
+                                <option value="">-- Bitte wählen --</option>
+                                <option value="wegewart" {% if request.form.get('rolle') == 'wegewart' %}selected{% endif %}>Wegewart</option>
+                                <option value="ortsvorsteher" {% if request.form.get('rolle') == 'ortsvorsteher' %}selected{% endif %}>Ortsvorsteher</option>
+                                <option value="verwaltung" {% if request.form.get('rolle') == 'verwaltung' %}selected{% endif %}>Verwaltung</option>
+                                <option value="admin" {% if request.form.get('rolle') == 'admin' %}selected{% endif %}>Administrator</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong><i class="bi bi-info-circle"></i> Rollenübersicht:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Wegewart:</strong> Kann eigene Einsätze erfassen und bearbeiten</li>
+                            <li><strong>Ortsvorsteher:</strong> Kann Einsätze des eigenen Ortsteils freigeben</li>
+                            <li><strong>Verwaltung:</strong> Kann alle Einsätze abrechnen und Benutzer verwalten</li>
+                            <li><strong>Administrator:</strong> Volle Rechte im System</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="aktiv" name="aktiv" 
+                               {% if not request.form or request.form.get('aktiv') != 'off' %}checked{% endif %}>
+                        <label class="form-check-label" for="aktiv">
+                            Benutzer ist aktiv (kann sich einloggen)
+                        </label>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin_user') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Abbrechen
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Benutzer anlegen
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

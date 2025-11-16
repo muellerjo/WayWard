@@ -89,6 +89,17 @@ def init_db():
         )
     ''')
     
+    # Tabelle Rollen
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS roles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role_code VARCHAR(50) UNIQUE NOT NULL,
+            role_name VARCHAR(100) NOT NULL,
+            description TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     db.commit()
     
     # Standard-Admin anlegen falls nicht vorhanden
@@ -102,7 +113,7 @@ def init_db():
                     name='Müller',
                     vorname='Jonas',
                     ortsteil='Krenkingen',
-                    roles='user,wegewart',
+                    roles='ortsvorsteher,wegewart',
                     email='jonas.mueller@example.com')
         #create default user for each village
         villages = ['Krenkingen','Breitenfeld']
@@ -112,4 +123,18 @@ def init_db():
                         name=village,
                         vorname='System',
                         ortsteil=village,
-                        roles='user',)
+                        roles='ortsvorsteher',)
+            
+    # Rollen vordefinieren
+
+    cursor = db.execute("SELECT COUNT(*) as count FROM roles")
+    if cursor.fetchone()['count'] == 0:
+        db.execute("""
+            INSERT INTO roles (role_code, role_name, description) VALUES
+            ('wegewart', 'Wegewart', 'Verantwortlich für die Pflege der Wege'),
+            ('ortsvorsteher', 'Ortsvorsteher', 'Leiter des Ortsteils'),
+            ('verwaltung', 'Verwaltung', 'Mitarbeiter der Gemeindeverwaltung'),
+            ('admin', 'Administrator', 'Systemadministrator mit vollen Rechten')
+        """)
+        db.commit()
+    print("Datenbank initialisiert.")

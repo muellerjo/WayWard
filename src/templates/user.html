@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Benutzerverwaltung - Wegewart-System{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-8">
+        <h2><i class="bi bi-people"></i> Benutzerverwaltung</h2>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('admin_user_new') }}" class="btn btn-primary">
+            <i class="bi bi-person-plus"></i> Neuer Benutzer
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                {% if benutzer %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Benutzername</th>
+                                <th>Name</th>
+                                <th>Ortsteil</th>
+                                <th>Rolle</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Erstellt</th>
+                                <th class="text-end">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for benutzer_item in benutzer %}
+                            <tr>
+                                <td><strong>{{ benutzer_item.username }}</strong></td>
+                                <td>{{ benutzer_item.vorname }} {{ benutzer_item.name }}</td>
+                                <td><span class="badge bg-secondary">{{ benutzer_item.ortsteil }}</span></td>
+                                <td>
+                                    {% if benutzer_item.roles|has_role('admin') %}
+                                    <span class="badge bg-danger">Administrator</span>
+                                    {% elif benutzer_item.roles|has_role('verwaltung') %}
+                                    <span class="badge bg-primary">Verwaltung</span>
+                                    {% elif benutzer_item.roles|has_role('ortsvorsteher') %}
+                                    <span class="badge bg-info">Ortsvorsteher</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Wegewart</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ benutzer_item.email or '-' }}</td>
+                                <td>
+                                    {% if benutzer_item.aktiv %}
+                                    <span class="badge bg-success">Aktiv</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inaktiv</span>
+                                    {% endif %}
+                                </td>
+                                <td><small>{{ benutzer_item.created_at[:10] if benutzer_item.created_at else '-' }}</small></td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('admin_benutzer_bearbeiten', benutzer_id=benutzer_item.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="Bearbeiten">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% if benutzer_item.aktiv %}
+                                    <form method="POST" action="{{ url_for('admin_benutzer_deaktivieren', benutzer_id=benutzer_item.id) }}" 
+                                          style="display:inline;" onsubmit="return confirm('Benutzer wirklich deaktivieren?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Deaktivieren">
+                                            <i class="bi bi-lock"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <form method="POST" action="{{ url_for('admin_benutzer_aktivieren', benutzer_id=benutzer_item.id) }}" 
+                                          style="display:inline;">
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Aktivieren">
+                                            <i class="bi bi-unlock"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                    <p class="mt-3">Keine Benutzer vorhanden</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

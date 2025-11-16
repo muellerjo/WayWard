@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Benutzer bearbeiten - Wegewart-System{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <a href="{{ url_for('admin_user') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück zur Übersicht
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-pencil"></i> Benutzer bearbeiten</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin_user_modify', benutzer_id=benutzer_edit.id) }}">
+                    <!-- Persönliche Daten -->
+                    <h5 class="mb-3"><i class="bi bi-person"></i> Persönliche Daten</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Benutzername</label>
+                        <input type="text" class="form-control" value="{{ benutzer_edit.username }}" disabled>
+                        <small class="text-muted">Benutzername kann nicht geändert werden</small>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="vorname" class="form-label">Vorname *</label>
+                            <input type="text" class="form-control" id="vorname" name="vorname" 
+                                   value="{{ request.form.get('vorname', benutzer_edit.vorname) }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Nachname *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ request.form.get('name', benutzer_edit.name) }}" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="{{ request.form.get('email', benutzer_edit.email or '') }}">
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Zuordnung -->
+                    <h5 class="mb-3"><i class="bi bi-briefcase"></i> Zuordnung</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="ortsteil" class="form-label">Ortsteil *</label>
+                            <select class="form-select" id="ortsteil" name="ortsteil" required>
+                                <option value="Krenkingen" {% if request.form.get('ortsteil', benutzer_edit.ortsteil) == 'Krenkingen' %}selected{% endif %}>Krenkingen</option>
+                                <option value="Dangstetten" {% if request.form.get('ortsteil', benutzer_edit.ortsteil) == 'Dangstetten' %}selected{% endif %}>Dangstetten</option>
+                                <option value="Oberlauchringen" {% if request.form.get('ortsteil', benutzer_edit.ortsteil) == 'Oberlauchringen' %}selected{% endif %}>Oberlauchringen</option>
+                                <option value="Unterlauchringen" {% if request.form.get('ortsteil', benutzer_edit.ortsteil) == 'Unterlauchringen' %}selected{% endif %}>Unterlauchringen</option>
+                                <option value="Tiengen" {% if request.form.get('ortsteil', benutzer_edit.ortsteil) == 'Tiengen' %}selected{% endif %}>Tiengen</option>
+                                <option value="Verwaltung" {% if request.form.get('ortsteil', benutzer_edit.ortsteil) == 'Verwaltung' %}selected{% endif %}>Verwaltung</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Rolle(n) *</label>
+                            <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+                                {% set selected_roles = request.form.getlist('rolle') or (benutzer_edit.roles.split(',') if benutzer_edit.roles else []) %}
+                                
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="rolle" value="wegewart" id="rolle_wegewart"
+                                        {% if 'wegewart' in selected_roles %}checked{% endif %}>
+                                    <label class="form-check-label" for="rolle_wegewart">Wegewart</label>
+                                </div>
+                                
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="rolle" value="ortsvorsteher" id="rolle_ortsvorsteher"
+                                        {% if 'ortsvorsteher' in selected_roles %}checked{% endif %}>
+                                    <label class="form-check-label" for="rolle_ortsvorsteher">Ortsvorsteher</label>
+                                </div>
+                                
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="rolle" value="verwaltung" id="rolle_verwaltung"
+                                        {% if 'verwaltung' in selected_roles %}checked{% endif %}>
+                                    <label class="form-check-label" for="rolle_verwaltung">Verwaltung</label>
+                                </div>
+                                
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="rolle" value="admin" id="rolle_admin"
+                                        {% if 'admin' in selected_roles %}checked{% endif %}>
+                                    <label class="form-check-label" for="rolle_admin">Administrator</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="aktiv" name="aktiv" 
+                               {% if request.form.get('aktiv') == 'on' or (not request.form and benutzer_edit.aktiv) %}checked{% endif %}>
+                        <label class="form-check-label" for="aktiv">
+                            Benutzer ist aktiv (kann sich einloggen)
+                        </label>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Passwort ändern (optional) -->
+                    <h5 class="mb-3"><i class="bi bi-key"></i> Passwort ändern (optional)</h5>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Lass diese Felder leer, wenn das Passwort nicht geändert werden soll.
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="neues_passwort" class="form-label">Neues Passwort</label>
+                            <input type="password" class="form-control" id="neues_passwort" name="neues_passwort" 
+                                   minlength="6">
+                            <small class="text-muted">Mindestens 6 Zeichen</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="neues_passwort_confirm" class="form-label">Passwort bestätigen</label>
+                            <input type="password" class="form-control" id="neues_passwort_confirm" 
+                                   name="neues_passwort_confirm" minlength="6">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin_user') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Abbrechen
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Änderungen speichern
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
