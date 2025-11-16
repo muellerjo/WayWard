@@ -13,7 +13,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="bi bi-tools"></i> Wegewart-System
+                <i class="bi bi-tools"></i> WT Wegewart-System
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -49,7 +49,7 @@
                             <i class="bi bi-truck"></i> Maschinen
                         </a>
                     </li>
-                    {% if user.rolle|has_role('admin') or user.rolle|has_role('verwaltung') %}
+                    {% if user.roles|has_role('admin') or user.roles|has_role('verwaltung') %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin_benutzer') }}">
                             <i class="bi bi-people"></i> Benutzer
