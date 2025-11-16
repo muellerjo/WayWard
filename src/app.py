@@ -4,102 +4,26 @@ Wegewart Abrechnung - Lightweight Web Application
 Erfassung von Arbeitsstunden und Maschineneinsätzen
 """
 
-import sqlite3
-import hashlib
 import secrets
-from datetime import datetime, timedelta
+
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from wayward_db import get_db, close_db, init_db
+
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)  # Wird bei jedem Start neu generiert - in Produktion aus Config laden!
-app.config['DATABASE'] = 'wegewart.db'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 
-# ==================== Datenbank ====================
 
-def get_db():
-    """Datenbankverbindung herstellen"""
-    if 'db' not in g:
-        g.db = sqlite3.connect(app.config['DATABASE'])
-        g.db.row_factory = sqlite3.Row
-    return g.db
+# Register the teardown handler
+app.teardown_appcontext(close_db)
 
-@app.teardown_appcontext
-def close_db(error):
-    """Datenbankverbindung schließen"""
-    db = g.pop('db', None)
-    if db is not None:
-        db.close()
-
-def init_db():
-    """Datenbank initialisieren"""
-    db = get_db()
-    
-    # Tabelle: Benutzer
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS user (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            name TEXT NOT NULL,
-            vorname TEXT NOT NULL,
-            ortsteil TEXT NOT NULL,
-            roles TEXT NOT NULL,
-            email TEXT,
-            aktiv INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_by INTEGER NOT NULL,
-            FOREIGN KEY (created_by) REFERENCES user (id)
-        )
-    ''')
-    
-    # Tabelle: Maschinen (vereinfacht - nur Name)
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS machines (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            bezeichnung TEXT NOT NULL,
-            aktiv INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Tabelle: Arbeitseinsätze
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS arbeitseinsaetze (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            datum DATE NOT NULL,
-            arbeitsstunden REAL NOT NULL,
-            taetigkeitsbeschreibung TEXT NOT NULL,
-            machine_used INTEGER DEFAULT NULL,
-            status TEXT DEFAULT 'erfasst',
-            rejection_reason TEXT,
-            checked_time TIMESTAMP,
-            checked_by INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES user (id),
-            FOREIGN KEY (checked_by) REFERENCES user (id),
-            FOREIGN KEY (machine_used) REFERENCES machines (id)
-        )
-    ''')
-    
-    db.commit()
-    
-    # Standard-Admin anlegen falls nicht vorhanden
-    cursor = db.execute("""
-                        SELECT COUNT(*) as count FROM user WHERE roles LIKE '%admin%'
-                        """)
-    if cursor.fetchone()['count'] == 0:
-        admin_hash = generate_password_hash('admin123')
-        db.execute('''
-            INSERT INTO user (username, password_hash, name, vorname, ortsteil, roles, email, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', ('admin', admin_hash, 'Administrator', 'System', 'Verwaltung', 'admin', 'admin@gemeinde.de', 0))
-        db.commit()
-        print("Standard-Admin erstellt: admin / admin123 (BITTE PASSWORT ÄNDERN!)")
-
+# ==================== Init DB on first startup ====================
+# Initialize database WITH application context
+with app.app_context():
+    init_db()
+            
 # ==================== Authentifizierung ====================
 
 def login_required(f):
