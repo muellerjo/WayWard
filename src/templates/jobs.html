@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+
+{% block title %}Arbeitseinsätze - Wegewart-System{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Arbeitseinsätze</h1>
+        <button type="button" class="btn btn-primary" onclick="addNewRow()">
+            <i class="bi bi-plus-circle"></i> Neuer Einsatz
+        </button>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('jobs') }}" class="row g-3">
+                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                <div class="col-md-3">
+                    <label for="wegewart_filter" class="form-label">Wegewart</label>
+                    <select class="form-select" id="wegewart_filter" name="wegewart_filter">
+                        <option value="">Alle</option>
+                        {% for ww in available_wegewarten %}
+                        <option value="{{ ww.id }}" {% if request.args.get('wegewart_filter') == ww.id|string %}selected{% endif %}>
+                            {{ ww.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">Von Datum</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ request.args.get('date_from', '') }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">Bis Datum</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ request.args.get('date_to', '') }}">
+                </div>
+                
+                {% if user_villages|length > 1 %}
+                <div class="col-md-3">
+                    <label for="village_filter" class="form-label">Ortschaft</label>
+                    <select class="form-select" id="village_filter" name="village_filter">
+                        <option value="">Alle</option>
+                        {% for village in user_villages %}
+                        <option value="{{ village }}" {% if request.args.get('village_filter') == village %}selected{% endif %}>
+                            {{ village }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-secondary me-2">
+                        <i class="bi bi-funnel"></i> Filtern
+                    </button>
+                    <a href="{{ url_for('jobs') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Batch Actions for Ortsvorsteher -->
+    {% if user_role in ['admin', 'ortsvorsteher'] %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <button type="button" class="btn btn-success" onclick="approveSelected()" id="approveBtn" disabled>
+                <i class="bi bi-check-circle"></i> Ausgewählte freigeben
+            </button>
+            <span class="ms-2" id="selectedCount">0 ausgewählt</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Jobs Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm" id="jobsTable">
+                    <thead class="table-light">
+                        <tr>
+                            {% if user_role in ['admin', 'ortsvorsteher'] %}
+                            <th style="width: 30px;">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                            </th>
+                            {% endif %}
+                            <th style="width: 100px;">Datum</th>
+                            <th style="width: 150px;">Wegewart</th>
+                            <th style="width: 120px;">Ortschaft</th>
+                            <th>Tätigkeit</th>
+                            <th style="width: 80px;">Stunden</th>
+                            <th style="width: 100px;">Status</th>
+                            {% if user_role in ['admin', 'ortsvorsteher'] %}
+                            <th style="width: 100px;">Freigabe</th>
+                            {% endif %}
+                            <th style="width: 120px;">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobsTableBody">
+                        {% if jobs %}
+                        {% for job in jobs %}
+                        <tr id="row-{{ job.id }}" data-job-id="{{ job.id }}">
+                            {% if user_role in ['admin', 'ortsvorsteher'] %}
+                            <td>
+                                {% if not job.approved %}
+                                <input type="checkbox" class="job-checkbox" value="{{ job.id }}" onchange="updateSelectedCount()">
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            <td>
+                                <span class="view-mode">{{ job.date.strftime('%d.%m.%Y') }}</span>
+                                <input type="date" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ job.date.strftime('%Y-%m-%d') }}" data-field="date">
+                            </td>
+                            <td>
+                                <span class="view-mode">{{ job.wegewart_name }}</span>
+                                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="wegewart_id">
+                                    {% for ww in available_wegewarten %}
+                                    <option value="{{ ww.id }}" {% if ww.id == job.wegewart_id %}selected{% endif %}>
+                                        {{ ww.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% else %}
+                                <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ job.wegewart_name }}" readonly>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="view-mode">{{ job.village }}</span>
+                                <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ job.village }}" data-field="village" 
+                                       {% if user_role not in ['admin', 'ortsvorsteher'] %}readonly{% endif %}>
+                            </td>
+                            <td>
+                                <span class="view-mode">{{ job.description }}</span>
+                                <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ job.description }}" data-field="description">
+                            </td>
+                            <td>
+                                <span class="view-mode">{{ job.hours }}</span>
+                                <input type="number" step="0.5" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ job.hours }}" data-field="hours">
+                            </td>
+                            <td>
+                                <span class="view-mode">
+                                    {% if job.status == 'eingereicht' %}
+                                    <span class="badge bg-warning text-dark">Eingereicht</span>
+                                    {% elif job.status == 'freigegeben' %}
+                                    <span class="badge bg-success">Freigegeben</span>
+                                    {% elif job.status == 'abgelehnt' %}
+                                    <span class="badge bg-danger">Abgelehnt</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ job.status }}</span>
+                                    {% endif %}
+                                </span>
+                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="status">
+                                    <option value="eingereicht" {% if job.status == 'eingereicht' %}selected{% endif %}>Eingereicht</option>
+                                    <option value="freigegeben" {% if job.status == 'freigegeben' %}selected{% endif %}>Freigegeben</option>
+                                    <option value="abgelehnt" {% if job.status == 'abgelehnt' %}selected{% endif %}>Abgelehnt</option>
+                                </select>
+                            </td>
+                            {% if user_role in ['admin', 'ortsvorsteher'] %}
+                            <td>
+                                {% if job.approved %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Ja</span>
+                                {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-clock"></i> Nein</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            <td>
+                                <div class="view-mode">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editRow('{{ job.id }}')" title="Bearbeiten">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteRow('{{ job.id }}')" title="Löschen">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="edit-mode" style="display:none;">
+                                    <button class="btn btn-sm btn-success" onclick="saveRow('{{ job.id }}')" title="Speichern">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" onclick="cancelEdit('{{ job.id }}')" title="Abbrechen">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr id="noDataRow">
+                            <td colspan="{% if user_role in ['admin', 'ortsvorsteher'] %}9{% else %}7{% endif %}" class="text-center text-muted">
+                                Keine Arbeitseinsätze gefunden.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Store original data for cancel functionality
+let originalData = {};
+let editingRowId = null;
+
+function addNewRow() {
+    // Remove "no data" row if it exists
+    const noDataRow = document.getElementById('noDataRow');
+    if (noDataRow) {
+        noDataRow.remove();
+    }
+    
+    const tbody = document.getElementById('jobsTableBody');
+    const newId = 'new-' + Date.now();
+    const today = new Date().toISOString().split('T')[0];
+    const todayDisplay = new Date().toLocaleDateString('de-DE');
+    
+    const hasOrtsvorsteherRole = {{ 'true' if user_role in ['admin', 'ortsvorsteher'] else 'false' }};
+    const checkboxCol = hasOrtsvorsteherRole ? '<td></td>' : '';
+    const approvalCol = hasOrtsvorsteherRole ? '<td><span class="badge bg-secondary"><i class="bi bi-clock"></i> Nein</span></td>' : '';
+    const colspan = hasOrtsvorsteherRole ? '9' : '7';
+    
+    const newRow = `
+        <tr id="row-${newId}" data-job-id="${newId}" class="table-info">
+            ${checkboxCol}
+            <td><input type="date" class="form-control form-control-sm" value="${today}" data-field="date"></td>
+            <td>
+                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                <select class="form-select form-select-sm" data-field="wegewart_id">
+                    {% for ww in available_wegewarten %}
+                    <option value="{{ ww.id }}" {% if ww.id == current_user_id %}selected{% endif %}>{{ ww.name }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
+                <input type="text" class="form-control form-control-sm" value="{{ current_user_name }}" readonly>
+                <input type="hidden" data-field="wegewart_id" value="{{ current_user_id }}">
+                {% endif %}
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm" value="{{ user_villages[0] if user_villages else '' }}" data-field="village">
+            </td>
+            <td><input type="text" class="form-control form-control-sm" placeholder="Tätigkeit" data-field="description"></td>
+            <td><input type="number" step="0.5" class="form-control form-control-sm" value="1" data-field="hours"></td>
+            <td>
+                <select class="form-select form-select-sm" data-field="status">
+                    <option value="eingereicht" selected>Eingereicht</option>
+                    <option value="freigegeben">Freigegeben</option>
+                    <option value="abgelehnt">Abgelehnt</option>
+                </select>
+            </td>
+            ${approvalCol}
+            <td>
+                <button class="btn btn-sm btn-success" onclick="saveNewRow('${newId}')" title="Speichern">
+                    <i class="bi bi-check"></i>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="cancelNewRow('${newId}')" title="Abbrechen">
+                    <i class="bi bi-x"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+    
+    tbody.insertAdjacentHTML('afterbegin', newRow);
+}
+
+function editRow(jobId) {
+    if (editingRowId && editingRowId !== jobId) {
+        alert('Bitte speichern oder abbrechen Sie die aktuelle Bearbeitung zuerst.');
+        return;
+    }
+    
+    const row = document.querySelector(`#row-${jobId}`);
+    const viewElements = row.querySelectorAll('.view-mode');
+    const editElements = row.querySelectorAll('.edit-mode');
+    
+    // Store original data
+    originalData[jobId] = {};
+    editElements.forEach(el => {
+        if (el.dataset.field) {
+            originalData[jobId][el.dataset.field] = el.value;
+        }
+    });
+    
+    viewElements.forEach(el => el.style.display = 'none');
+    editElements.forEach(el => el.style.display = 'block');
+    
+    editingRowId = jobId;
+}
+
+function cancelEdit(jobId) {
+    const row = document.querySelector(`#row-${jobId}`);
+    const viewElements = row.querySelectorAll('.view-mode');
+    const editElements = row.querySelectorAll('.edit-mode');
+    
+    // Restore original data
+    if (originalData[jobId]) {
+        editElements.forEach(el => {
+            if (el.dataset.field && originalData[jobId][el.dataset.field] !== undefined) {
+                el.value = originalData[jobId][el.dataset.field];
+            }
+        });
+    }
+    
+    viewElements.forEach(el => el.style.display = 'block');
+    editElements.forEach(el => el.style.display = 'none');
+    
+    editingRowId = null;
+}
+
+function saveRow(jobId) {
+    const row = document.querySelector(`#row-${jobId}`);
+    const editElements = row.querySelectorAll('.edit-mode[data-field]');
+    
+    const data = { job_id: jobId };
+    editElements.forEach(el => {
+        data[el.dataset.field] = el.value;
+    });
+    
+    fetch(`{{ url_for('update_job') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Speichern: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Speichern: ' + error);
+    });
+}
+
+function saveNewRow(tempId) {
+    const row = document.querySelector(`#row-${tempId}`);
+    const inputs = row.querySelectorAll('[data-field]');
+    
+    const data = {};
+    inputs.forEach(input => {
+        data[input.dataset.field] = input.value;
+    });
+    
+    // Validate required fields
+    if (!data.date || !data.description || !data.hours || !data.village) {
+        alert('Bitte füllen Sie alle Pflichtfelder aus.');
+        return;
+    }
+    
+    fetch(`{{ url_for('create_job') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Erstellen: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Erstellen: ' + error);
+    });
+}
+
+function cancelNewRow(tempId) {
+    const row = document.querySelector(`#row-${tempId}`);
+    row.remove();
+    
+    // Add "no data" row back if table is empty
+    const tbody = document.getElementById('jobsTableBody');
+    if (tbody.children.length === 0) {
+        const hasOrtsvorsteherRole = {{ 'true' if user_role in ['admin', 'ortsvorsteher'] else 'false' }};
+        const colspan = hasOrtsvorsteherRole ? '9' : '7';
+        tbody.innerHTML = `<tr id="noDataRow"><td colspan="${colspan}" class="text-center text-muted">Keine Arbeitseinsätze gefunden.</td></tr>`;
+    }
+}
+
+function deleteRow(jobId) {
+    if (!confirm('Möchten Sie diesen Einsatz wirklich löschen?')) {
+        return;
+    }
+    
+    fetch(`{{ url_for('delete_job') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ job_id: jobId })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Löschen: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Löschen: ' + error);
+    });
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.job-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
+    const count = checkboxes.length;
+    document.getElementById('selectedCount').textContent = count + ' ausgewählt';
+    document.getElementById('approveBtn').disabled = count === 0;
+}
+
+function approveSelected() {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
+    const jobIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (jobIds.length === 0) {
+        alert('Bitte wählen Sie mindestens einen Einsatz aus.');
+        return;
+    }
+    
+    if (!confirm(`Möchten Sie ${jobIds.length} Einsatz/Einsätze wirklich freigeben?`)) {
+        return;
+    }
+    
+    fetch(`{{ url_for('approve_jobs') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ job_ids: jobIds })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Freigeben: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Freigeben: ' + error);
+    });
+}
+</script>
+{% endblock %}

@@ -101,12 +101,17 @@ def init_db():
         )
     ''')
     db.commit()
+
+    #Creating Table for Jobs using external sql file
+    with open('sql/db_jobs.sql', 'r') as f:
+        db.executescript(f.read())
     
     # Standard-Admin anlegen falls nicht vorhanden
     cursor = db.execute("""
                         SELECT COUNT(*) as count FROM user WHERE roles LIKE '%admin%'
                         """)
     if cursor.fetchone()['count'] == 0:
+        print("No User with admin role found -> Creating Default Admin")
         create_user('admin', 'admin123', 'Administrator', 'System', 'Verwaltung', 'admin', 'admin@gemeinde.de')
         create_user(username='jonas',
                     password='jonas123',
@@ -118,6 +123,7 @@ def init_db():
         #create default user for each village
         villages = ['Krenkingen','Breitenfeld']
         for village in villages:
+            print(f"Create Default User for {village}")
             create_user(username=village.lower(),
                         password='password',
                         name=village,
@@ -126,7 +132,7 @@ def init_db():
                         roles='ortsvorsteher',)
             
     # Rollen vordefinieren
-
+    print("Database for Roles created")
     cursor = db.execute("SELECT COUNT(*) as count FROM roles")
     if cursor.fetchone()['count'] == 0:
         db.execute("""
