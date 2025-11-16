@@ -14,7 +14,7 @@
     <!-- Filter Section -->
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ url_for('jobs') }}" class="row g-3">
+            <form method="GET" action="{{ url_for('jobs.jobs') }}" class="row g-3">
                 {% if user_role in ['admin', 'ortsvorsteher'] %}
                 <div class="col-md-3">
                     <label for="wegewart_filter" class="form-label">Wegewart</label>
@@ -58,7 +58,7 @@
                     <button type="submit" class="btn btn-secondary me-2">
                         <i class="bi bi-funnel"></i> Filtern
                     </button>
-                    <a href="{{ url_for('jobs') }}" class="btn btn-outline-secondary">
+                    <a href="{{ url_for('jobs.jobs') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
@@ -352,7 +352,7 @@ function saveRow(jobId) {
         data[el.dataset.field] = el.value;
     });
     
-    fetch("{{ url_for('update_job') }}", {
+    fetch("{{ url_for('jobs.update_job') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -387,7 +387,7 @@ function saveNewRow(tempId) {
         return;
     }
     
-    fetch("{{ url_for('create_job') }}", {
+    fetch("{{ url_for('jobs.create_job') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -425,7 +425,7 @@ function deleteRow(jobId) {
         return;
     }
     
-    fetch("{{ url_for('delete_job') }}", {
+    fetch("{{ url_for('jobs.delete_job') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -473,7 +473,7 @@ function approveSelected() {
         return;
     }
     
-    fetch("{{ url_for('approve_jobs') }}", {
+    fetch("{{ url_for('jobs.approve_jobs') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -509,7 +509,7 @@ function rejectSelected() {
         return;
     }
     
-    fetch("{{ url_for('reject_jobs') }}", {
+    fetch("{{ url_for('jobs.reject_jobs') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

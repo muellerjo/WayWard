@@ -101,6 +101,13 @@ def init_db():
                     ortsteil='Krenkingen',
                     roles='ortsvorsteher,wegewart',
                     email='jonas.mueller@example.com')
+        create_user(username='ww',
+                    password='ww',
+                    name='Wegewart',
+                    vorname='Mustermann',
+                    ortsteil='Detzeln',
+                    roles='wegewart',
+                    email='ww@example.com')
         #create default user for each village
         villages = ['Krenkingen','Breitenfeld']
         for village in villages:

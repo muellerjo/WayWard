@@ -7,7 +7,6 @@
     <div class="col-md-12">
         <h2>
             <i class="bi bi-speedometer2"></i> Dashboard
-            <small class="text-muted">{{ user.ortsteil }}</small>
         </h2>
         <hr>
     </div>
@@ -15,7 +14,7 @@
 
 <!-- Statistik-Karten -->
 <div class="row mb-4">
-    {% if user.rolle == 'wegewart' %}
+    {% if user.roles|has_role('wegewart') %}
     <div class="col-md-4">
         <div class="card text-white bg-primary">
             <div class="card-body">
@@ -43,8 +42,9 @@
             </div>
         </div>
     </div>
+    {% endif %}
     
-    {% elif user.rolle == 'ortsvorsteher' %}
+    {% if user.roles|has_role('ortsvorsteher') %}
     <div class="col-md-6">
         <div class="card text-white bg-warning">
             <div class="card-body">
@@ -60,35 +60,6 @@
                 <h5 class="card-title"><i class="bi bi-check-circle"></i> Freigegeben</h5>
                 <h2>{{ stats.freigegeben }}</h2>
                 <p class="card-text">Von mir freigegeben</p>
-            </div>
-        </div>
-    </div>
-    
-    {% else %}
-    <div class="col-md-4">
-        <div class="card text-white bg-info">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-cash-stack"></i> Zur Abrechnung</h5>
-                <h2>{{ stats.zur_abrechnung }}</h2>
-                <p class="card-text">Freigegeben</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-white bg-success">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-check-all"></i> Abgerechnet</h5>
-                <h2>{{ stats.abgerechnet }}</h2>
-                <p class="card-text">Komplett</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-white bg-secondary">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-clipboard-data"></i> Gesamt</h5>
-                <h2>{{ stats.gesamt }}</h2>
-                <p class="card-text">Alle Einträge</p>
             </div>
         </div>
     </div>
@@ -160,12 +131,6 @@
                                     <span class="badge bg-{{ einsatz.status|status_badge }}">
                                         {{ einsatz.status|status_text }}
                                     </span>
-                                </td>
-                                <td>
-                                    <a href="{{ url_for('einsatz_detail', einsatz_id=einsatz.id) }}" 
-                                       class="btn btn-sm btn-outline-primary">
-                                        Details
-                                    </a>
                                 </td>
                             </tr>
                             {% endfor %}

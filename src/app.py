@@ -76,7 +76,6 @@ def get_current_user():
     """Aktuell eingeloggten Benutzer holen"""
     if 'user_id' not in session:
         return None
-    
     db = get_db()
     return db.execute('SELECT * FROM user WHERE id = ?', (session['user_id'],)).fetchone()
 
@@ -87,6 +86,17 @@ def has_role(user_roles, role):
         return False
     roles = [r.strip() for r in user_roles.split(',')]
     return role in roles
+
+@app.before_request
+def load_logged_in_user():
+    """Load logged in user into g before each request"""
+    user_id = session.get('user_id')
+    if user_id is None:
+        g.user = None
+    else:
+        db = get_db()
+        g.user = db.execute('SELECT * FROM user WHERE id = ?', (user_id,)).fetchone()
+
 
 # ==================== Routen ====================
 
@@ -106,7 +116,7 @@ def index():
         # Eigene Einträge
         einsaetze = db.execute('''
             SELECT a.*, u.name, u.vorname
-            FROM arbeitseinsaetze a
+            FROM jobs a
             JOIN user u ON a.user_id = u.id
             WHERE a.user_id = ?
             ORDER BY a.datum DESC
@@ -114,16 +124,16 @@ def index():
         ''', (user['id'],)).fetchall()
         
         stats = {
-            'gesamt': db.execute('SELECT COUNT(*) as c FROM arbeitseinsaetze WHERE user_id = ?', (user['id'],)).fetchone()['c'],
-            'erfasst': db.execute('SELECT COUNT(*) as c FROM arbeitseinsaetze WHERE user_id = ? AND status = "erfasst"', (user['id'],)).fetchone()['c'],
-            'abgelehnt': db.execute('SELECT COUNT(*) as c FROM arbeitseinsaetze WHERE user_id = ? AND status = "abgelehnt"', (user['id'],)).fetchone()['c']
+            'gesamt': db.execute('SELECT COUNT(*) as c FROM jobs WHERE user_id = ?', (user['id'],)).fetchone()['c'],
+            'erfasst': db.execute('SELECT COUNT(*) as c FROM jobs WHERE user_id = ? AND status = "erfasst"', (user['id'],)).fetchone()['c'],
+            'abgelehnt': db.execute('SELECT COUNT(*) as c FROM jobs WHERE user_id = ? AND status = "abgelehnt"', (user['id'],)).fetchone()['c']
         }
         
     elif user_has_role('ortsvorsteher'):
         # Einträge des eigenen Ortsteils
         einsaetze = db.execute('''
             SELECT a.*, u.name, u.vorname
-            FROM arbeitseinsaetze a
+            FROM jobs a
             JOIN user u ON a.user_id = u.id
             WHERE u.ortsteil = ? AND a.status = 'erfasst'
             ORDER BY a.datum DESC
@@ -132,7 +142,7 @@ def index():
         stats = {
             'zu_pruefen': len(einsaetze),
             'freigegeben': db.execute('''
-                SELECT COUNT(*) as c FROM arbeitseinsaetze a
+                SELECT COUNT(*) as c FROM jobs a
                 JOIN user u ON a.user_id = u.id
                 WHERE u.ortsteil = ? AND a.status = 'freigegeben_ov'
             ''', (user['ortsteil'],)).fetchone()['c']
@@ -142,7 +152,7 @@ def index():
         # Alle Einträge zur Abrechnung
         einsaetze = db.execute('''
             SELECT a.*, u.name, u.vorname, u.ortsteil
-            FROM arbeitseinsaetze a
+            FROM jobs a
             JOIN user u ON a.user_id = u.id
             WHERE a.status = 'freigegeben_ov'
             ORDER BY a.datum DESC
@@ -150,8 +160,8 @@ def index():
         
         stats = {
             'zur_abrechnung': len(einsaetze),
-            'gesamt': db.execute('SELECT COUNT(*) as c FROM arbeitseinsaetze').fetchone()['c'],
-            'abgerechnet': db.execute('SELECT COUNT(*) as c FROM arbeitseinsaetze WHERE status = "abgerechnet"').fetchone()['c']
+            'gesamt': db.execute('SELECT COUNT(*) as c FROM jobs').fetchone()['c'],
+            'abgerechnet': db.execute('SELECT COUNT(*) as c FROM jobs WHERE status = "abgerechnet"').fetchone()['c']
         }
     
     return render_template('index.html', user=user, einsaetze=einsaetze, stats=stats)

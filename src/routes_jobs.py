@@ -1,18 +1,20 @@
 """
 Jobs Routes Blueprint for Wegewart System
 """
-from flask import Blueprint, render_template, request, jsonify, g
+#from flask import Blueprint, render_template, request, jsonify, g
+from flask import Blueprint, render_template, request, jsonify, g, redirect, url_for, session, flash
 from functools import wraps
 
 # Create Blueprint
 jobs_bp = Blueprint('jobs', __name__)
 
-# Decorator for login required
+# Decorator for login required - matching your app.py
 def login_required(f):
-    """Decorator to check if user is logged in"""
+    """Decorator für geschützte Routen"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not g.get('user'):
+        if 'user_id' not in session:
+            flash('Bitte zuerst einloggen', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -154,6 +156,7 @@ def jobs():
         user_role = 'wegewart'
     
     return render_template('jobs.html',
+                         user=g.user,  # ADD THIS LINE
                          jobs=jobs_list,
                          user_role=user_role,
                          user_villages=villages,
