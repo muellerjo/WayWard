@@ -71,7 +71,7 @@ def get_machines():
     """Get all active machines"""
     from wayward_db import get_db
     db = get_db()
-    cursor = db.execute("SELECT id, bezeichnung FROM machines WHERE aktiv = 1 ORDER BY bezeichnung")
+    cursor = db.execute("SELECT id, name FROM machines ORDER BY name")
     return cursor.fetchall()
 
 # Routes
@@ -92,7 +92,7 @@ def jobs():
             j.*,
             u.name || ' ' || u.vorname as wegewart_name,
             u.ortsteil,
-            m.bezeichnung as machine_name
+            m.name as machine_name
         FROM jobs j
         JOIN user u ON j.user_id = u.id
         LEFT JOIN machines m ON j.machine_used = m.id

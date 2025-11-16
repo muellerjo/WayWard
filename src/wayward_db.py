@@ -59,16 +59,6 @@ def init_db():
         )
     ''')
     
-    # Tabelle: Maschinen (vereinfacht - nur Name)
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS machines (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            bezeichnung TEXT NOT NULL,
-            aktiv INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-
 
     # Tabelle Rollen
     db.execute('''
@@ -82,6 +72,13 @@ def init_db():
         )
     ''')
     db.commit()
+
+    #if not exists, create table for machines and jobs
+    cursor = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='machines'")
+    if cursor.fetchone() is None:
+        print("Creating machines table")
+        with open('src/sql/db_machines.sql', 'r') as f:
+            db.executescript(f.read())
 
     #Creating Table for Jobs using external sql file
     with open('src/sql/db_jobs.sql', 'r') as f:
