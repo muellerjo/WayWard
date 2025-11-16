@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Wegewart-System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>
+            <i class="bi bi-speedometer2"></i> Dashboard
+            <small class="text-muted">{{ user.ortsteil }}</small>
+        </h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Statistik-Karten -->
+<div class="row mb-4">
+    {% if user.rolle == 'wegewart' %}
+    <div class="col-md-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-clipboard-check"></i> Gesamt</h5>
+                <h2>{{ stats.gesamt }}</h2>
+                <p class="card-text">Alle Einträge</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-clock-history"></i> Erfasst</h5>
+                <h2>{{ stats.erfasst }}</h2>
+                <p class="card-text">Zur Prüfung</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-x-circle"></i> Abgelehnt</h5>
+                <h2>{{ stats.abgelehnt }}</h2>
+                <p class="card-text">Zu korrigieren</p>
+            </div>
+        </div>
+    </div>
+    
+    {% elif user.rolle == 'ortsvorsteher' %}
+    <div class="col-md-6">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-clipboard-check"></i> Zu prüfen</h5>
+                <h2>{{ stats.zu_pruefen }}</h2>
+                <p class="card-text">Wartende Einträge</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-check-circle"></i> Freigegeben</h5>
+                <h2>{{ stats.freigegeben }}</h2>
+                <p class="card-text">Von mir freigegeben</p>
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    <div class="col-md-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-cash-stack"></i> Zur Abrechnung</h5>
+                <h2>{{ stats.zur_abrechnung }}</h2>
+                <p class="card-text">Freigegeben</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-check-all"></i> Abgerechnet</h5>
+                <h2>{{ stats.abgerechnet }}</h2>
+                <p class="card-text">Komplett</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-secondary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-clipboard-data"></i> Gesamt</h5>
+                <h2>{{ stats.gesamt }}</h2>
+                <p class="card-text">Alle Einträge</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Schnellaktionen -->
+{% if user.rolle == 'wegewart' %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-lightning"></i> Schnellaktionen</h5>
+                <a href="{{ url_for('einsatz_neu') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Neuen Einsatz erfassen
+                </a>
+                <a href="{{ url_for('einsaetze_liste') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-list-ul"></i> Meine Einsätze
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Letzte Einträge -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    {% if user.rolle == 'wegewart' %}
+                    <i class="bi bi-clock-history"></i> Meine letzten Einträge
+                    {% elif user.rolle == 'ortsvorsteher' %}
+                    <i class="bi bi-clipboard-check"></i> Zu prüfen
+                    {% else %}
+                    <i class="bi bi-cash-stack"></i> Zur Abrechnung
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if einsaetze %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Mitarbeiter</th>
+                                {% if user.rolle in ['admin', 'verwaltung'] %}
+                                <th>Ortsteil</th>
+                                {% endif %}
+                                <th>Stunden</th>
+                                <th>Tätigkeit</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for einsatz in einsaetze %}
+                            <tr>
+                                <td>{{ einsatz.datum }}</td>
+                                <td>{{ einsatz.vorname }} {{ einsatz.name }}</td>
+                                {% if user.rolle in ['admin', 'verwaltung'] %}
+                                <td>{{ einsatz.ortsteil }}</td>
+                                {% endif %}
+                                <td>{{ "%.2f"|format(einsatz.arbeitsstunden) }} h</td>
+                                <td>{{ einsatz.taetigkeitsbeschreibung[:50] }}...</td>
+                                <td>
+                                    <span class="badge bg-{{ einsatz.status|status_badge }}">
+                                        {{ einsatz.status|status_text }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('einsatz_detail', einsatz_id=einsatz.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Keine Einträge vorhanden</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
