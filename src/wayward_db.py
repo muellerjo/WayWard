@@ -68,27 +68,8 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    # Tabelle: Arbeitseinsätze
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS arbeitseinsaetze (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            datum DATE NOT NULL,
-            arbeitsstunden REAL NOT NULL,
-            taetigkeitsbeschreibung TEXT NOT NULL,
-            machine_used INTEGER DEFAULT NULL,
-            status TEXT DEFAULT 'erfasst',
-            rejection_reason TEXT,
-            checked_time TIMESTAMP,
-            checked_by INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES user (id),
-            FOREIGN KEY (checked_by) REFERENCES user (id),
-            FOREIGN KEY (machine_used) REFERENCES machines (id)
-        )
-    ''')
-    
+
+
     # Tabelle Rollen
     db.execute('''
         CREATE TABLE IF NOT EXISTS roles (
@@ -103,7 +84,7 @@ def init_db():
     db.commit()
 
     #Creating Table for Jobs using external sql file
-    with open('sql/db_jobs.sql', 'r') as f:
+    with open('src/sql/db_jobs.sql', 'r') as f:
         db.executescript(f.read())
     
     # Standard-Admin anlegen falls nicht vorhanden

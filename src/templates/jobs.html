@@ -21,8 +21,8 @@
                     <select class="form-select" id="wegewart_filter" name="wegewart_filter">
                         <option value="">Alle</option>
                         {% for ww in available_wegewarten %}
-                        <option value="{{ ww.id }}" {% if request.args.get('wegewart_filter') == ww.id|string %}selected{% endif %}>
-                            {{ ww.name }}
+                        <option value="{{ ww['id'] }}" {% if request.args.get('wegewart_filter') == ww['id']|string %}selected{% endif %}>
+                            {{ ww['vorname'] }} {{ ww['name'] }}
                         </option>
                         {% endfor %}
                     </select>
@@ -73,6 +73,9 @@
             <button type="button" class="btn btn-success" onclick="approveSelected()" id="approveBtn" disabled>
                 <i class="bi bi-check-circle"></i> Ausgewählte freigeben
             </button>
+            <button type="button" class="btn btn-danger ms-2" onclick="rejectSelected()" id="rejectBtn" disabled>
+                <i class="bi bi-x-circle"></i> Ausgewählte ablehnen
+            </button>
             <span class="ms-2" id="selectedCount">0 ausgewählt</span>
         </div>
     </div>
@@ -94,102 +97,116 @@
                             <th style="width: 150px;">Wegewart</th>
                             <th style="width: 120px;">Ortschaft</th>
                             <th>Tätigkeit</th>
+                            <th style="width: 100px;">Maschine</th>
                             <th style="width: 80px;">Stunden</th>
                             <th style="width: 100px;">Status</th>
-                            {% if user_role in ['admin', 'ortsvorsteher'] %}
-                            <th style="width: 100px;">Freigabe</th>
-                            {% endif %}
                             <th style="width: 120px;">Aktionen</th>
                         </tr>
                     </thead>
                     <tbody id="jobsTableBody">
                         {% if jobs %}
                         {% for job in jobs %}
-                        <tr id="row-{{ job.id }}" data-job-id="{{ job.id }}">
+                        <tr id="row-{{ job['id'] }}" data-job-id="{{ job['id'] }}">
                             {% if user_role in ['admin', 'ortsvorsteher'] %}
                             <td>
-                                {% if not job.approved %}
-                                <input type="checkbox" class="job-checkbox" value="{{ job.id }}" onchange="updateSelectedCount()">
+                                {% if job['status'] == 'erfasst' %}
+                                <input type="checkbox" class="job-checkbox" value="{{ job['id'] }}" onchange="updateSelectedCount()">
                                 {% endif %}
                             </td>
                             {% endif %}
                             <td>
-                                <span class="view-mode">{{ job.date.strftime('%d.%m.%Y') }}</span>
+                                <span class="view-mode">{{ job['datum'] }}</span>
                                 <input type="date" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job.date.strftime('%Y-%m-%d') }}" data-field="date">
+                                       value="{{ job['datum'] }}" data-field="datum">
                             </td>
                             <td>
-                                <span class="view-mode">{{ job.wegewart_name }}</span>
+                                <span class="view-mode">{{ job['wegewart_name'] }}</span>
                                 {% if user_role in ['admin', 'ortsvorsteher'] %}
-                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="wegewart_id">
+                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="user_id">
                                     {% for ww in available_wegewarten %}
-                                    <option value="{{ ww.id }}" {% if ww.id == job.wegewart_id %}selected{% endif %}>
-                                        {{ ww.name }}
+                                    <option value="{{ ww['id'] }}" {% if ww['id'] == job['user_id'] %}selected{% endif %}>
+                                        {{ ww['vorname'] }} {{ ww['name'] }}
                                     </option>
                                     {% endfor %}
                                 </select>
                                 {% else %}
                                 <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job.wegewart_name }}" readonly>
+                                       value="{{ job['wegewart_name'] }}" readonly>
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="view-mode">{{ job.village }}</span>
+                                <span class="view-mode">{{ job['ortsteil'] }}</span>
                                 <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job.village }}" data-field="village" 
-                                       {% if user_role not in ['admin', 'ortsvorsteher'] %}readonly{% endif %}>
+                                       value="{{ job['ortsteil'] }}" readonly>
                             </td>
                             <td>
-                                <span class="view-mode">{{ job.description }}</span>
+                                <span class="view-mode">{{ job['taetigkeitsbeschreibung'] }}</span>
                                 <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job.description }}" data-field="description">
-                            </td>
-                            <td>
-                                <span class="view-mode">{{ job.hours }}</span>
-                                <input type="number" step="0.5" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job.hours }}" data-field="hours">
+                                       value="{{ job['taetigkeitsbeschreibung'] }}" data-field="taetigkeitsbeschreibung">
                             </td>
                             <td>
                                 <span class="view-mode">
-                                    {% if job.status == 'eingereicht' %}
-                                    <span class="badge bg-warning text-dark">Eingereicht</span>
-                                    {% elif job.status == 'freigegeben' %}
-                                    <span class="badge bg-success">Freigegeben</span>
-                                    {% elif job.status == 'abgelehnt' %}
-                                    <span class="badge bg-danger">Abgelehnt</span>
+                                    {% if job['machine_name'] %}
+                                        {{ job['machine_name'] }}
                                     {% else %}
-                                    <span class="badge bg-secondary">{{ job.status }}</span>
+                                        <span class="text-muted">-</span>
                                     {% endif %}
                                 </span>
-                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="status">
-                                    <option value="eingereicht" {% if job.status == 'eingereicht' %}selected{% endif %}>Eingereicht</option>
-                                    <option value="freigegeben" {% if job.status == 'freigegeben' %}selected{% endif %}>Freigegeben</option>
-                                    <option value="abgelehnt" {% if job.status == 'abgelehnt' %}selected{% endif %}>Abgelehnt</option>
+                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="machine_used">
+                                    <option value="">Keine</option>
+                                    {% for machine in machines %}
+                                    <option value="{{ machine['id'] }}" {% if machine['id'] == job['machine_used'] %}selected{% endif %}>
+                                        {{ machine['bezeichnung'] }}
+                                    </option>
+                                    {% endfor %}
                                 </select>
                             </td>
-                            {% if user_role in ['admin', 'ortsvorsteher'] %}
                             <td>
-                                {% if job.approved %}
-                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Ja</span>
-                                {% else %}
-                                <span class="badge bg-secondary"><i class="bi bi-clock"></i> Nein</span>
+                                <span class="view-mode">{{ job['arbeitsstunden'] }}</span>
+                                <input type="number" step="0.5" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ job['arbeitsstunden'] }}" data-field="arbeitsstunden">
+                            </td>
+                            <td>
+                                <span class="view-mode">
+                                    {% if job['status'] == 'erfasst' %}
+                                    <span class="badge bg-warning text-dark">Erfasst</span>
+                                    {% elif job['status'] == 'freigegeben' %}
+                                    <span class="badge bg-success">Freigegeben</span>
+                                    {% elif job['status'] == 'abgelehnt' %}
+                                    <span class="badge bg-danger">Abgelehnt</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ job['status'] }}</span>
+                                    {% endif %}
+                                    {% if job['rejection_reason'] %}
+                                    <br><small class="text-danger">{{ job['rejection_reason'] }}</small>
+                                    {% endif %}
+                                </span>
+                                {% if user_role in ['admin', 'ortsvorsteher'] %}
+                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="status">
+                                    <option value="erfasst" {% if job['status'] == 'erfasst' %}selected{% endif %}>Erfasst</option>
+                                    <option value="freigegeben" {% if job['status'] == 'freigegeben' %}selected{% endif %}>Freigegeben</option>
+                                    <option value="abgelehnt" {% if job['status'] == 'abgelehnt' %}selected{% endif %}>Abgelehnt</option>
+                                </select>
                                 {% endif %}
                             </td>
-                            {% endif %}
                             <td>
                                 <div class="view-mode">
-                                    <button class="btn btn-sm btn-outline-primary" onclick="editRow('{{ job.id }}')" title="Bearbeiten">
+                                    {% if job['status'] != 'freigegeben' or user_role in ['admin', 'ortsvorsteher'] %}
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editRow('{{ job['id'] }}')" title="Bearbeiten">
                                         <i class="bi bi-pencil"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteRow('{{ job.id }}')" title="Löschen">
+                                    {% endif %}
+                                    {% if job['status'] != 'freigegeben' or user_role == 'admin' %}
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteRow('{{ job['id'] }}')" title="Löschen">
                                         <i class="bi bi-trash"></i>
                                     </button>
+                                    {% endif %}
                                 </div>
                                 <div class="edit-mode" style="display:none;">
-                                    <button class="btn btn-sm btn-success" onclick="saveRow('{{ job.id }}')" title="Speichern">
+                                    <button class="btn btn-sm btn-success" onclick="saveRow('{{ job['id'] }}')" title="Speichern">
                                         <i class="bi bi-check"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-secondary" onclick="cancelEdit('{{ job.id }}')" title="Abbrechen">
+                                    <button class="btn btn-sm btn-secondary" onclick="cancelEdit('{{ job['id'] }}')" title="Abbrechen">
                                         <i class="bi bi-x"></i>
                                     </button>
                                 </div>
@@ -198,7 +215,7 @@
                         {% endfor %}
                         {% else %}
                         <tr id="noDataRow">
-                            <td colspan="{% if user_role in ['admin', 'ortsvorsteher'] %}9{% else %}7{% endif %}" class="text-center text-muted">
+                            <td colspan="{% if user_role in ['admin', 'ortsvorsteher'] %}9{% else %}8{% endif %}" class="text-center text-muted">
                                 Keine Arbeitseinsätze gefunden.
                             </td>
                         </tr>
@@ -225,42 +242,49 @@ function addNewRow() {
     const tbody = document.getElementById('jobsTableBody');
     const newId = 'new-' + Date.now();
     const today = new Date().toISOString().split('T')[0];
-    const todayDisplay = new Date().toLocaleDateString('de-DE');
     
     const hasOrtsvorsteherRole = {{ 'true' if user_role in ['admin', 'ortsvorsteher'] else 'false' }};
     const checkboxCol = hasOrtsvorsteherRole ? '<td></td>' : '';
-    const approvalCol = hasOrtsvorsteherRole ? '<td><span class="badge bg-secondary"><i class="bi bi-clock"></i> Nein</span></td>' : '';
-    const colspan = hasOrtsvorsteherRole ? '9' : '7';
+    const colspan = hasOrtsvorsteherRole ? '9' : '8';
     
     const newRow = `
         <tr id="row-${newId}" data-job-id="${newId}" class="table-info">
             ${checkboxCol}
-            <td><input type="date" class="form-control form-control-sm" value="${today}" data-field="date"></td>
+            <td><input type="date" class="form-control form-control-sm" value="${today}" data-field="datum"></td>
             <td>
                 {% if user_role in ['admin', 'ortsvorsteher'] %}
-                <select class="form-select form-select-sm" data-field="wegewart_id">
+                <select class="form-select form-select-sm" data-field="user_id">
                     {% for ww in available_wegewarten %}
-                    <option value="{{ ww.id }}" {% if ww.id == current_user_id %}selected{% endif %}>{{ ww.name }}</option>
+                    <option value="{{ ww['id'] }}" {% if ww['id'] == current_user_id %}selected{% endif %}>{{ ww['vorname'] }} {{ ww['name'] }}</option>
                     {% endfor %}
                 </select>
                 {% else %}
                 <input type="text" class="form-control form-control-sm" value="{{ current_user_name }}" readonly>
-                <input type="hidden" data-field="wegewart_id" value="{{ current_user_id }}">
+                <input type="hidden" data-field="user_id" value="{{ current_user_id }}">
                 {% endif %}
             </td>
             <td>
-                <input type="text" class="form-control form-control-sm" value="{{ user_villages[0] if user_villages else '' }}" data-field="village">
+                <input type="text" class="form-control form-control-sm" value="{{ current_user_ortsteil }}" readonly>
             </td>
-            <td><input type="text" class="form-control form-control-sm" placeholder="Tätigkeit" data-field="description"></td>
-            <td><input type="number" step="0.5" class="form-control form-control-sm" value="1" data-field="hours"></td>
+            <td><input type="text" class="form-control form-control-sm" placeholder="Tätigkeit" data-field="taetigkeitsbeschreibung"></td>
             <td>
-                <select class="form-select form-select-sm" data-field="status">
-                    <option value="eingereicht" selected>Eingereicht</option>
-                    <option value="freigegeben">Freigegeben</option>
-                    <option value="abgelehnt">Abgelehnt</option>
+                <select class="form-select form-select-sm" data-field="machine_used">
+                    <option value="">Keine</option>
+                    {% for machine in machines %}
+                    <option value="{{ machine['id'] }}">{{ machine['bezeichnung'] }}</option>
+                    {% endfor %}
                 </select>
             </td>
-            ${approvalCol}
+            <td><input type="number" step="0.5" class="form-control form-control-sm" value="1" data-field="arbeitsstunden"></td>
+            <td>
+                <select class="form-select form-select-sm" data-field="status">
+                    <option value="erfasst" selected>Erfasst</option>
+                    {% if user_role in ['admin', 'ortsvorsteher'] %}
+                    <option value="freigegeben">Freigegeben</option>
+                    <option value="abgelehnt">Abgelehnt</option>
+                    {% endif %}
+                </select>
+            </td>
             <td>
                 <button class="btn btn-sm btn-success" onclick="saveNewRow('${newId}')" title="Speichern">
                     <i class="bi bi-check"></i>
@@ -328,7 +352,7 @@ function saveRow(jobId) {
         data[el.dataset.field] = el.value;
     });
     
-    fetch(`{{ url_for('update_job') }}`, {
+    fetch("{{ url_for('update_job') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -358,12 +382,12 @@ function saveNewRow(tempId) {
     });
     
     // Validate required fields
-    if (!data.date || !data.description || !data.hours || !data.village) {
+    if (!data.datum || !data.taetigkeitsbeschreibung || !data.arbeitsstunden) {
         alert('Bitte füllen Sie alle Pflichtfelder aus.');
         return;
     }
     
-    fetch(`{{ url_for('create_job') }}`, {
+    fetch("{{ url_for('create_job') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -391,7 +415,7 @@ function cancelNewRow(tempId) {
     const tbody = document.getElementById('jobsTableBody');
     if (tbody.children.length === 0) {
         const hasOrtsvorsteherRole = {{ 'true' if user_role in ['admin', 'ortsvorsteher'] else 'false' }};
-        const colspan = hasOrtsvorsteherRole ? '9' : '7';
+        const colspan = hasOrtsvorsteherRole ? '9' : '8';
         tbody.innerHTML = `<tr id="noDataRow"><td colspan="${colspan}" class="text-center text-muted">Keine Arbeitseinsätze gefunden.</td></tr>`;
     }
 }
@@ -401,7 +425,7 @@ function deleteRow(jobId) {
         return;
     }
     
-    fetch(`{{ url_for('delete_job') }}`, {
+    fetch("{{ url_for('delete_job') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -433,6 +457,7 @@ function updateSelectedCount() {
     const count = checkboxes.length;
     document.getElementById('selectedCount').textContent = count + ' ausgewählt';
     document.getElementById('approveBtn').disabled = count === 0;
+    document.getElementById('rejectBtn').disabled = count === 0;
 }
 
 function approveSelected() {
@@ -448,7 +473,7 @@ function approveSelected() {
         return;
     }
     
-    fetch(`{{ url_for('approve_jobs') }}`, {
+    fetch("{{ url_for('approve_jobs') }}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -465,6 +490,45 @@ function approveSelected() {
     })
     .catch(error => {
         alert('Fehler beim Freigeben: ' + error);
+    });
+}
+
+function rejectSelected() {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
+    const jobIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (jobIds.length === 0) {
+        alert('Bitte wählen Sie mindestens einen Einsatz aus.');
+        return;
+    }
+    
+    const reason = prompt('Grund für Ablehnung (optional):');
+    if (reason === null) return; // User cancelled
+    
+    if (!confirm(`Möchten Sie ${jobIds.length} Einsatz/Einsätze wirklich ablehnen?`)) {
+        return;
+    }
+    
+    fetch("{{ url_for('reject_jobs') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+            job_ids: jobIds,
+            rejection_reason: reason 
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Ablehnen: ' + result.message);
+        }
+    })
+    .catch(error => {
+        alert('Fehler beim Ablehnen: ' + error);
     });
 }
 </script>

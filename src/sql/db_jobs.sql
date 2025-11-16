@@ -1,22 +1,16 @@
 CREATE TABLE IF NOT EXISTS jobs (
-    id INTEGER PRIMARY KEY,
-    wegewart_id INTEGER NOT NULL,
-    date DATE NOT NULL,
-    village TEXT NOT NULL,
-    description TEXT NOT NULL,
-    hours REAL NOT NULL,
-    status TEXT DEFAULT 'eingereicht',  -- 'eingereicht', 'freigegeben', 'abgelehnt'
-    approved BOOLEAN DEFAULT 0,
-    approved_by INTEGER,
-    approved_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    admin_notes TEXT,
-    FOREIGN KEY (wegewart_id) REFERENCES users(id),
-    FOREIGN KEY (approved_by) REFERENCES users(id)
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        datum DATE NOT NULL,
+        arbeitsstunden REAL NOT NULL,
+        taetigkeitsbeschreibung TEXT NOT NULL,
+        machine_used INTEGER DEFAULT NULL,
+        status TEXT DEFAULT 'erfasst',
+        rejection_reason TEXT,
+        checked_time TIMESTAMP,
+        checked_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES user (id),
+        FOREIGN KEY (checked_by) REFERENCES user (id),
+        FOREIGN KEY (machine_used) REFERENCES machines (id)
 );
-
-CREATE INDEX idx_jobs_date ON jobs(date);
-CREATE INDEX idx_jobs_village ON jobs(village);
-CREATE INDEX idx_jobs_status ON jobs(status);
-CREATE INDEX idx_jobs_approved ON jobs(approved);
