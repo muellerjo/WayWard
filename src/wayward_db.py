@@ -13,6 +13,7 @@ def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect(app.config['DATABASE'])
         g.db.row_factory = sqlite3.Row
+        g.db.text_factory = str  # Add this line for UTF-8 support
     return g.db
 
 

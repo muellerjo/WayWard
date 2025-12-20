@@ -190,17 +190,30 @@ def create_job():
         if machine_used == '':
             machine_used = None
         
-        cursor = db.execute('''
-            INSERT INTO jobs (user_id, datum, arbeitsstunden, taetigkeitsbeschreibung, machine_used, status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            user_id,
-            data['datum'],
-            float(data['arbeitsstunden']),
-            data['taetigkeitsbeschreibung'],
-            machine_used,
-            data.get('status', 'erfasst')
-        ))
+        # Build the insert dynamically
+        columns = {
+            'user_id': user_id,
+            'datum': data['datum'],
+            'time_start': data.get('time_start'),
+            'time_end': data.get('time_end'),
+            'pause': float(data.get('pause_stunden', 0)),
+            'arbeitsstunden': data.get('arbeitsstunden'),
+            'taetigkeitsbeschreibung': data['taetigkeitsbeschreibung'],
+            'machine_used': machine_used,
+            'maschinenstunden': float(data.get('maschinenstunden', 0)),
+            'status': data.get('status', 'erfasst')
+        }
+
+        # Generate SQL
+        col_names = ', '.join(columns.keys())
+        placeholders = ', '.join([f':{k}' for k in columns.keys()])
+
+        query = f'''
+            INSERT INTO jobs ({col_names})
+            VALUES ({placeholders})
+        '''
+
+        cursor = db.execute(query, columns)
         db.commit()
         
         return jsonify({'success': True, 'job_id': cursor.lastrowid})
