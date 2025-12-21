@@ -22,14 +22,12 @@ app.teardown_appcontext(close_db)
 
 # Import the jobs blueprint
 from routes_jobs import jobs_bp
-
-# ... your other imports ...
-
-# Register blueprints
 app.register_blueprint(jobs_bp)
 
 from routes_machines import machines_bp
 app.register_blueprint(machines_bp)
+
+
 # ==================== Init DB on first startup ====================
 # Initialize database WITH application context
 with app.app_context():
@@ -198,104 +196,6 @@ def logout():
     flash('Erfolgreich abgemeldet', 'info')
     return redirect(url_for('login'))
 
-@app.route('/maschinen')
-@login_required
-def maschinen_liste():
-    """Liste aller Maschinen"""
-    db = get_db()
-    user = get_current_user()
-    
-    # Hilfsfunktion zum Rollen-Check
-    def user_has_role(role):
-        return has_role(user['roles'], role)
-    
-    # Admin/Verwaltung sehen alle, andere nur aktive
-    if user_has_role('admin') or user_has_role('verwaltung'):
-        maschinen = db.execute('SELECT * FROM machines ORDER BY aktiv DESC, bezeichnung').fetchall()
-    else:
-        maschinen = db.execute('SELECT * FROM machines WHERE aktiv = 1 ORDER BY bezeichnung').fetchall()
-    
-    return render_template('maschinen_liste.html', user=user, maschinen=maschinen)
-
-@app.route('/maschinen/neu', methods=['GET', 'POST'])
-@rolle_required('admin', 'verwaltung')
-def maschine_neu():
-    """Neue Maschine anlegen"""
-    if request.method == 'POST':
-        bezeichnung = request.form.get('bezeichnung', '').strip()
-        aktiv = 1 if request.form.get('aktiv') == 'on' else 0
-        
-        # Validierung
-        if not bezeichnung:
-            flash('Bitte Bezeichnung eingeben', 'danger')
-            return render_template('maschine_neu.html', user=get_current_user())
-        
-        db = get_db()
-        try:
-            db.execute('''
-                INSERT INTO machines (bezeichnung, aktiv)
-                VALUES (?, ?)
-            ''', (bezeichnung, aktiv))
-            db.commit()
-            flash(f'Maschine "{bezeichnung}" erfolgreich angelegt', 'success')
-            return redirect(url_for('maschinen_liste'))
-        except Exception as e:
-            flash(f'Fehler beim Anlegen der Maschine: {e}', 'danger')
-    
-    return render_template('maschine_neu.html', user=get_current_user())
-
-@app.route('/maschinen/<int:maschine_id>/bearbeiten', methods=['GET', 'POST'])
-@rolle_required('admin', 'verwaltung')
-def maschine_bearbeiten(maschine_id):
-    """Maschine bearbeiten"""
-    db = get_db()
-    maschine_edit = db.execute('SELECT * FROM machines WHERE id = ?', (maschine_id,)).fetchone()
-    
-    if not maschine_edit:
-        flash('Maschine nicht gefunden', 'danger')
-        return redirect(url_for('maschinen_liste'))
-    
-    if request.method == 'POST':
-        bezeichnung = request.form.get('bezeichnung', '').strip()
-        aktiv = 1 if request.form.get('aktiv') == 'on' else 0
-        
-        if not bezeichnung:
-            flash('Bitte Bezeichnung eingeben', 'danger')
-            return render_template('maschine_bearbeiten.html', user=get_current_user(), maschine_edit=maschine_edit)
-        
-        try:
-            db.execute('''
-                UPDATE machines 
-                SET bezeichnung = ?, aktiv = ?
-                WHERE id = ?
-            ''', (bezeichnung, aktiv, maschine_id))
-            db.commit()
-            flash('Maschine erfolgreich aktualisiert', 'success')
-            return redirect(url_for('maschinen_liste'))
-        except Exception as e:
-            flash(f'Fehler beim Aktualisieren: {e}', 'danger')
-    
-    return render_template('maschine_bearbeiten.html', user=get_current_user(), maschine_edit=maschine_edit)
-
-@app.route('/maschinen/<int:maschine_id>/deaktivieren', methods=['POST'])
-@rolle_required('admin', 'verwaltung')
-def maschine_deaktivieren(maschine_id):
-    """Maschine deaktivieren"""
-    db = get_db()
-    db.execute('UPDATE machines SET aktiv = 0 WHERE id = ?', (maschine_id,))
-    db.commit()
-    flash('Maschine deaktiviert', 'warning')
-    return redirect(url_for('maschinen_liste'))
-
-@app.route('/maschinen/<int:maschine_id>/aktivieren', methods=['POST'])
-@rolle_required('admin', 'verwaltung')
-def maschine_aktivieren(maschine_id):
-    """Maschine aktivieren"""
-    db = get_db()
-    db.execute('UPDATE machines SET aktiv = 1 WHERE id = ?', (maschine_id,))
-    db.commit()
-    flash('Maschine aktiviert', 'success')
-    return redirect(url_for('maschinen_liste'))
 
 # ==================== Benutzerverwaltung ====================
 
