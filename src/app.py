@@ -21,10 +21,10 @@ app.teardown_appcontext(close_db)
 
 
 # Import the jobs blueprint
-from routes_jobs import jobs_bp
+from routes.jobs import jobs_bp
 app.register_blueprint(jobs_bp)
 
-from routes_machines import machines_bp
+from routes.machines import machines_bp
 app.register_blueprint(machines_bp)
 
 
@@ -118,7 +118,7 @@ def index():
             FROM jobs a
             JOIN user u ON a.user_id = u.id
             WHERE a.user_id = ?
-            ORDER BY a.datum DESC
+            ORDER BY a.date DESC
             LIMIT 10
         ''', (user['id'],)).fetchall()
         
@@ -135,7 +135,7 @@ def index():
             FROM jobs a
             JOIN user u ON a.user_id = u.id
             WHERE u.ortsteil = ? AND a.status = 'erfasst'
-            ORDER BY a.datum DESC
+            ORDER BY a.date DESC
         ''', (user['ortsteil'],)).fetchall()
         
         stats = {
@@ -154,7 +154,7 @@ def index():
             FROM jobs a
             JOIN user u ON a.user_id = u.id
             WHERE a.status = 'freigegeben_ov'
-            ORDER BY a.datum DESC
+            ORDER BY a.date DESC
         ''').fetchall()
         
         stats = {

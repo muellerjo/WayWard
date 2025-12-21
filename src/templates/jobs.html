@@ -92,9 +92,10 @@
                             <th style="width: 30px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
                             {% endif %}
                             <th style="width: 110px;">Datum</th>
-                            <th style="width: 70px;">Von</th>
-                            <th style="width: 70px;">Bis</th>
+                            <th style="width: 70px;">Start</th>
+                            <th style="width: 70px;">Ende</th>
                             <th style="width: 60px;">Pause</th>
+                            <th style="width: 70px;">Stunden</th>
                             {% if user_role in ['admin', 'ortsvorsteher'] %}
                             <th style="width: 140px;">Wegewart</th>
                             <th style="width: 110px;">Ortschaft</th>
@@ -102,7 +103,7 @@
                             <th>Tätigkeit</th>
                             <th style="width: 140px;">Maschine</th>
                             <th style="width: 70px;">Maschinenst.</th>
-                            <th style="width: 70px;">Arbeitsst.</th>
+        
                             <th style="width: 100px;">Status</th>
                             <th style="width: 100px;">Aktionen</th>
                         </tr>
@@ -121,9 +122,9 @@
                             
                             <!-- Datum -->
                             <td>
-                                <span class="view-mode">{{ job['datum'] }}</span>
+                                <span class="view-mode">{{ job['date'] }}</span>
                                 <input type="date" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job['datum'] }}" data-field="datum">
+                                       value="{{ job['date'] }}" data-field="date">
                             </td>
                             
                             <!-- Zeit Von -->
@@ -144,9 +145,18 @@
                             <td>
                                 <span class="view-mode">{{ job['pause'] if job['pause'] else '0' }}</span>
                                 <input type="number" step="0.5" min="0" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job['pause'] if job['pause'] else 0 }}" data-field="pause_stunden" onchange="calculateHoursInRow(this)">
+                                       value="{{ job['pause'] if job['pause'] else 0 }}" data-field="pause_hours" onchange="calculateHoursInRow(this)">
                             </td>
                             
+                            
+                            <!-- Arbeitsstunden (berechnet) -->
+                            <td>
+                                <span class="view-mode">{{ job['arbeitsstunden'] }}</span>
+                                <input type="number" step="0.25" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                       value="{{ job['arbeitsstunden'] }}" data-field="arbeitsstunden" readonly>
+                            </td>
+                            
+
                             {% if user_role in ['admin', 'ortsvorsteher'] %}
                             <!-- Wegewart -->
                             <td>
@@ -170,9 +180,9 @@
                             
                             <!-- Tätigkeit -->
                             <td>
-                                <span class="view-mode">{{ job['taetigkeitsbeschreibung'] }}</span>
+                                <span class="view-mode">{{ job['work_comment'] }}</span>
                                 <input type="text" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job['taetigkeitsbeschreibung'] }}" data-field="taetigkeitsbeschreibung">
+                                       value="{{ job['work_comment'] }}" data-field="work_comment">
                             </td>
                             
                             <!-- Maschine -->
@@ -184,10 +194,10 @@
                                         <span class="text-muted">-</span>
                                     {% endif %}
                                 </span>
-                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="machine_used">
+                                <select class="form-select form-select-sm edit-mode" style="display:none;" data-field="machine_id">
                                     <option value="">Keine</option>
                                     {% for machine in machines %}
-                                    <option value="{{ machine['id'] }}" {% if machine['id'] == job['machine_used'] %}selected{% endif %}>
+                                    <option value="{{ machine['id'] }}" {% if machine['id'] == job['machine_id'] %}selected{% endif %}>
                                         {{ machine['name'] }}
                                     </option>
                                     {% endfor %}
@@ -197,15 +207,8 @@
                             <!-- Maschinenstunden -->
                             <td>
                                 <span class="view-mode">{{ job['maschinenstunden'] if job['maschinenstunden'] else '0' }}</span>
-                                <input type="number" step="0.5" min="0" class="form-control form-control-sm edit-mode" style="display:none;" 
+                                <input type="number" step="0.25" min="0" class="form-control form-control-sm edit-mode" style="display:none;" 
                                        value="{{ job['maschinenstunden'] if job['maschinenstunden'] else 0 }}" data-field="maschinenstunden">
-                            </td>
-                            
-                            <!-- Arbeitsstunden (berechnet) -->
-                            <td>
-                                <span class="view-mode">{{ job['arbeitsstunden'] }}</span>
-                                <input type="number" step="0.5" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job['arbeitsstunden'] }}" data-field="arbeitsstunden" readonly>
                             </td>
                             
                             <!-- Status -->
@@ -306,8 +309,8 @@ function calculateHoursInRow(element) {
     const row = element.closest('tr');
     const startInput = row.querySelector('[data-field="time_start"]');
     const endInput = row.querySelector('[data-field="time_end"]');
-    const pauseInput = row.querySelector('[data-field="pause_stunden"]');
-    const hoursInput = row.querySelector('[data-field="arbeitsstunden"]');
+    const pauseInput = row.querySelector('[data-field="pause_hours"]');
+    const hoursInput = row.querySelector('[data-field="work_hours"]');
     
     if (startInput && endInput && hoursInput) {
         const hours = calculateHours(
@@ -344,22 +347,22 @@ function addNewRow() {
     const newRow = `
         <tr id="row-${newId}" data-job-id="${newId}" class="table-info">
             ${checkboxCol}
-            <td><input type="date" class="form-control form-control-sm" value="${today}" data-field="datum"></td>
-            <td><input type="time" class="form-control form-control-sm" value="${now}" data-field="time_start" onchange="calculateHoursInRow(this)"></td>
+            <td><input type="date" class="form-control form-control-sm" value="${today}" data-field="date"></td>
+            <td><input type="time" class="form-control form-control-sm" value="" data-field="time_start" onchange="calculateHoursInRow(this)"></td>
             <td><input type="time" class="form-control form-control-sm" value="" data-field="time_end" onchange="calculateHoursInRow(this)"></td>
-            <td><input type="number" step="0.5" min="0" class="form-control form-control-sm" value="0" data-field="pause_stunden" onchange="calculateHoursInRow(this)"></td>
+            <td><input type="number" step="0.5" min="0" class="form-control form-control-sm" value="0" data-field="pause_hours" onchange="calculateHoursInRow(this)"></td>
+            <td><input type="number" step="0.5" class="form-control form-control-sm" value="0" data-field="work_hours" readonly></td>
             ${wegewartCols}
             {% if user_role not in ['admin', 'ortsvorsteher'] %}
             <input type="hidden" data-field="user_id" value="{{ current_user_id }}">
             {% endif %}
-            <td><input type="text" class="form-control form-control-sm" placeholder="Tätigkeit" data-field="taetigkeitsbeschreibung"></td>
+            <td><input type="text" class="form-control form-control-sm" placeholder="Tätigkeit" data-field="work_comment"></td>
             <td>
-                <select class="form-select form-select-sm" data-field="machine_used">
+                <select class="form-select form-select-sm" data-field="machine_id">
                     ${machineOptionsHTML}
                 </select>
             </td>
-            <td><input type="number" step="0.5" min="0" class="form-control form-control-sm" value="0" data-field="maschinenstunden"></td>
-            <td><input type="number" step="0.5" class="form-control form-control-sm" value="0" data-field="arbeitsstunden" readonly></td>
+            <td><input type="number" step="0.5" min="0" class="form-control form-control-sm" value="0" data-field="machine_hours"></td>
             <td>
                 <select class="form-select form-select-sm" data-field="status">
                     <option value="erfasst" selected>Erfasst</option>
@@ -461,7 +464,7 @@ function saveNewRow(tempId) {
         data[input.dataset.field] = input.value;
     });
     
-    if (!data.datum || !data.taetigkeitsbeschreibung) {
+    if (!data.date || !data.work_comment) {
         alert('Bitte füllen Sie Datum und Tätigkeit aus.');
         return;
     }

@@ -1,14 +1,14 @@
 CREATE TABLE IF NOT EXISTS jobs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
-        datum DATE NOT NULL,
+        date DATE NOT NULL,
         time_start TIME,
         time_end TIME,
-        pause REAL DEFAULT 0,
-        arbeitsstunden REAL NOT NULL,
-        taetigkeitsbeschreibung TEXT NOT NULL,
-        machine_used INTEGER DEFAULT NULL,
-        maschinenstunden REAL DEFAULT NULL,
+        pause_hours REAL DEFAULT 0,
+        work_hours REAL NOT NULL,
+        work_comment TEXT NOT NULL,
+        machine_id INTEGER DEFAULT NULL,
+        machine_hours REAL DEFAULT NULL,
         status TEXT DEFAULT 'erfasst',
         rejection_reason TEXT,
         checked_time TIMESTAMP,
@@ -16,5 +16,5 @@ CREATE TABLE IF NOT EXISTS jobs (
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES user (id),
         FOREIGN KEY (checked_by) REFERENCES user (id),
-        FOREIGN KEY (machine_used) REFERENCES machines (id)
+        FOREIGN KEY (machine_id) REFERENCES machines (id)
 );

@@ -12,8 +12,9 @@ def get_db():
     """Datenbankverbindung herstellen"""
     if 'db' not in g:
         g.db = sqlite3.connect(app.config['DATABASE'])
-        g.db.row_factory = sqlite3.Row
-        g.db.text_factory = str  # Add this line for UTF-8 support
+        #g.db.execute("PRAGMA encoding = 'UTF-8';")  # Ensure UTF-8 encoding
+        g.db.row_factory = sqlite3.Row # Enable dictionary-like access to rows
+        #g.db.text_factory = str  # Add this line for UTF-8 support
     return g.db
 
 
@@ -78,7 +79,7 @@ def init_db():
     cursor = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='machines'")
     if cursor.fetchone() is None:
         print("Creating machines table")
-        with open('src/sql/db_machines.sql', 'r') as f:
+        with open('src/sql/db_machines.sql', 'r', encoding='utf-8') as f:
             db.executescript(f.read())
 
     #Creating Table for Jobs using external sql file

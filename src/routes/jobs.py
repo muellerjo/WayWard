@@ -95,7 +95,7 @@ def jobs():
             m.name as machine_name
         FROM jobs j
         JOIN user u ON j.user_id = u.id
-        LEFT JOIN machines m ON j.machine_used = m.id
+        LEFT JOIN machines m ON j.machine_id = m.id
         WHERE 1=1
     '''
     params = []
@@ -122,12 +122,12 @@ def jobs():
     
     date_from = request.args.get('date_from')
     if date_from:
-        query += ' AND j.datum >= ?'
+        query += ' AND j.date >= ?'
         params.append(date_from)
     
     date_to = request.args.get('date_to')
     if date_to:
-        query += ' AND j.datum <= ?'
+        query += ' AND j.date <= ?'
         params.append(date_to)
     
     village_filter = request.args.get('village_filter')
@@ -136,7 +136,7 @@ def jobs():
         params.append(village_filter)
     
     # Order by date descending
-    query += ' ORDER BY j.datum DESC, j.created_at DESC'
+    query += ' ORDER BY j.date DESC, j.created_at DESC'
     
     cursor = db.execute(query, params)
     jobs_list = cursor.fetchall()
@@ -173,7 +173,6 @@ def create_job():
     """Create a new job"""
     from wayward_db import get_db
     db = get_db()
-    
     try:
         data = request.get_json()
         
@@ -184,23 +183,17 @@ def create_job():
         # Only admin and ortsvorsteher can create jobs for others
         if user_id != g.user['id'] and not any(r in roles for r in ['admin', 'ortsvorsteher']):
             return jsonify({'success': False, 'message': 'Keine Berechtigung'}), 403
-        
-        # Create job
-        machine_used = data.get('machine_used')
-        if machine_used == '':
-            machine_used = None
-        
         # Build the insert dynamically
         columns = {
             'user_id': user_id,
-            'datum': data['datum'],
+            'date': data.get('date'),
             'time_start': data.get('time_start'),
             'time_end': data.get('time_end'),
-            'pause': float(data.get('pause_stunden', 0)),
-            'arbeitsstunden': data.get('arbeitsstunden'),
-            'taetigkeitsbeschreibung': data['taetigkeitsbeschreibung'],
-            'machine_used': machine_used,
-            'maschinenstunden': float(data.get('maschinenstunden', 0)),
+            'pause_hours': float(data.get('pause_hours', 0)),
+            'work_hours': data.get('work_hours'),
+            'work_comment': data['work_comment'],
+            'machine_id': data.get('machine_id', None),
+            'machine_hours': float(data.get('machine_hours', 0)),
             'status': data.get('status', 'erfasst')
         }
 
@@ -234,83 +227,73 @@ def update_job():
         data = request.get_json()
         job_id = data.get('job_id')
         
-        # Get job
-        cursor = db.execute('SELECT * FROM jobs WHERE id = ?', (job_id,))
-        job = cursor.fetchone()
+        # Early exit if no ID
+        if not job_id:
+            return jsonify({'success': False, 'message': 'Missing job ID'}), 400
         
+        # Check if job exists and get current status
+        job = db.execute('SELECT * FROM jobs WHERE id = ?', (job_id,)).fetchone()
         if not job:
             return jsonify({'success': False, 'message': 'Job nicht gefunden'}), 404
         
         # Check permissions
         roles = get_user_roles(g.user)
-        villages = get_user_villages(g.user)
         
-        # Get job's village
-        cursor = db.execute('SELECT ortsteil FROM user WHERE id = ?', (job['user_id'],))
-        job_user = cursor.fetchone()
+        # Permission logic based on status and role
+        if job['status'] in ['genehmigt', 'abgelehnt']:
+            if 'admin' not in roles:
+                return jsonify({'success': False, 'message': 'Nur Admins können genehmigte/abgelehnte Jobs ändern'}), 403
+        elif job['user_id'] != g.user['id']:
+            if not any(r in roles for r in ['admin', 'ortsvorsteher']):
+                return jsonify({'success': False, 'message': 'Keine Berechtigung'}), 403
         
-        can_edit = False
-        if 'admin' in roles:
-            can_edit = True
-        elif 'ortsvorsteher' in roles and job_user['ortsteil'] in villages:
-            can_edit = True
-        elif job['user_id'] == g.user['id'] and job['status'] != 'freigegeben':
-            can_edit = True
+        # Build the update dynamically - exclude job_id from columns to update
+        columns = {}
         
-        if not can_edit:
-            return jsonify({'success': False, 'message': 'Keine Berechtigung'}), 403
+        # Add all provided fields (except job_id) to the update
+        update_fields = [
+            'user_id', 'date', 'time_start', 'time_end', 
+            'pause_hours', 'work_hours', 'work_comment', 
+            'machine_id', 'machine_hours', 'status'
+        ]
         
-        # Build UPDATE query
-        updates = []
-        params = []
+        for field in update_fields:
+            if field in data:
+                value = data[field]
+                
+                # Handle data type conversions
+                if field in ['pause_hours', 'machine_hours']:
+                    columns[field] = float(value) if value is not None else 0
+                elif field == 'user_id':
+                    columns[field] = int(value)
+                elif field == 'machine_id':
+                    columns[field] = value if value else None
+                else:
+                    columns[field] = value
         
-        if 'datum' in data:
-            updates.append('datum = ?')
-            params.append(data['datum'])
+        # Only proceed if there are fields to update
+        if not columns:
+            return jsonify({'success': False, 'message': 'Keine Felder zum Aktualisieren'}), 400
         
-        if 'user_id' in data and ('admin' in roles or 'ortsvorsteher' in roles):
-            updates.append('user_id = ?')
-            params.append(int(data['user_id']))
+        # Generate SQL dynamically
+        set_clause = ', '.join([f'{k} = :{k}' for k in columns.keys()])
+        columns['job_id'] = job_id  # Add job_id for WHERE clause
         
-        if 'taetigkeitsbeschreibung' in data:
-            updates.append('taetigkeitsbeschreibung = ?')
-            params.append(data['taetigkeitsbeschreibung'])
+        query = f'''
+            UPDATE jobs 
+            SET {set_clause}
+            WHERE id = :job_id
+        '''
         
-        if 'arbeitsstunden' in data:
-            updates.append('arbeitsstunden = ?')
-            params.append(float(data['arbeitsstunden']))
-        
-        if 'machine_used' in data:
-            machine_used = data['machine_used']
-            if machine_used == '':
-                machine_used = None
-            updates.append('machine_used = ?')
-            params.append(machine_used)
-        
-        if 'status' in data and ('admin' in roles or 'ortsvorsteher' in roles):
-            updates.append('status = ?')
-            params.append(data['status'])
-            
-            # If status changed to freigegeben/abgelehnt, set checked fields
-            if data['status'] in ['freigegeben', 'abgelehnt']:
-                updates.append('checked_by = ?')
-                params.append(g.user['id'])
-                updates.append('checked_time = CURRENT_TIMESTAMP')
-        
-        if not updates:
-            return jsonify({'success': False, 'message': 'Keine Änderungen'}), 400
-        
-        params.append(job_id)
-        query = f"UPDATE jobs SET {', '.join(updates)} WHERE id = ?"
-        
-        db.execute(query, params)
+        db.execute(query, columns)
         db.commit()
         
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': 'Job erfolgreich aktualisiert'})
     
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)}), 400
+
 
 
 @jobs_bp.route('/jobs/delete', methods=['POST'])
@@ -319,42 +302,12 @@ def delete_job():
     """Delete a job"""
     from wayward_db import get_db
     db = get_db()
-    
     try:
         data = request.get_json()
         job_id = data.get('job_id')
-        
-        # Get job
-        cursor = db.execute('SELECT * FROM jobs WHERE id = ?', (job_id,))
-        job = cursor.fetchone()
-        
-        if not job:
-            return jsonify({'success': False, 'message': 'Job nicht gefunden'}), 404
-        
-        # Check permissions
-        roles = get_user_roles(g.user)
-        villages = get_user_villages(g.user)
-        
-        # Get job's village
-        cursor = db.execute('SELECT ortsteil FROM user WHERE id = ?', (job['user_id'],))
-        job_user = cursor.fetchone()
-        
-        can_delete = False
-        if 'admin' in roles:
-            can_delete = True
-        elif 'ortsvorsteher' in roles and job_user['ortsteil'] in villages:
-            can_delete = True
-        elif job['user_id'] == g.user['id'] and job['status'] != 'freigegeben':
-            can_delete = True
-        
-        if not can_delete:
-            return jsonify({'success': False, 'message': 'Keine Berechtigung'}), 403
-        
         db.execute('DELETE FROM jobs WHERE id = ?', (job_id,))
         db.commit()
-        
         return jsonify({'success': True})
-    
     except Exception as e:
         db.rollback()
         return jsonify({'success': False, 'message': str(e)}), 400
