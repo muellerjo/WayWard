@@ -12,7 +12,7 @@
     {% if user %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
                 <i class="bi bi-tools"></i> WT Wegewart-System
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -21,7 +21,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
+                        <a class="nav-link" href="{{ url_for('main.index') }}">
                             <i class="bi bi-house"></i> Dashboard
                         </a>
                     </li>
@@ -35,9 +35,9 @@
                             <i class="bi bi-truck"></i> Maschinen
                         </a>
                     </li>
-                    {% if user.roles|has_role('admin') or user.roles|has_role('verwaltung')  or user.roles|has_role('ortsvorsteher')%}
+                    {% if user.roles|has_role('admin') or user.roles|has_role('verwaltung') or user.roles|has_role('ortsvorsteher') %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_user') }}">
+                        <a class="nav-link" href="{{ url_for('admin.user_list') }}">
                             <i class="bi bi-people"></i> Benutzer
                         </a>
                     </li>
@@ -49,9 +49,9 @@
                             <i class="bi bi-person-circle"></i> {{ user.vorname }} {{ user.name }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ url_for('passwort_aendern') }}">Passwort ändern</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.passwort_aendern') }}">Passwort ändern</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">Abmelden</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Abmelden</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -71,7 +71,7 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-
+        
         {% block content %}{% endblock %}
     </div>
 

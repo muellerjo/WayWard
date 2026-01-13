@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-
 {% block title %}Login - Wegewart-System{% endblock %}
-
 {% block content %}
 <div class="row justify-content-center mt-5">
     <div class="col-md-4">
@@ -13,7 +11,7 @@
                     <p class="text-muted">Bitte anmelden</p>
                 </div>
                 
-                <form method="POST" action="{{ url_for('login') }}">
+                <form method="POST" action="{{ url_for('auth.login') }}">
                     <div class="mb-3">
                         <label for="benutzername" class="form-label">Benutzername</label>
                         <input type="text" class="form-control" id="benutzername" name="benutzername" 

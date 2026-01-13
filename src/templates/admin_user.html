@@ -8,7 +8,7 @@
         <h2><i class="bi bi-people"></i> Benutzerverwaltung</h2>
     </div>
     <div class="col-md-4 text-end">
-        <a href="{{ url_for('admin_user_new') }}" class="btn btn-primary">
+        <a href="{{ url_for('admin.user_new') }}" class="btn btn-primary">
             <i class="bi bi-person-plus"></i> Neuer Benutzer
         </a>
     </div>
@@ -58,19 +58,19 @@
                                 </td>
                                 <td><small>{{ benutzer_item.created_at[:10] if benutzer_item.created_at else '-' }}</small></td>
                                 <td class="text-end">
-                                    <a href="{{ url_for('admin_user_modify', benutzer_id=benutzer_item.id) }}" 
+                                    <a href="{{ url_for('admin.user_modify', benutzer_id=benutzer_item.id) }}" 
                                        class="btn btn-sm btn-outline-primary" title="Bearbeiten">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     {% if benutzer_item.aktiv %}
-                                    <form method="POST" action="{{ url_for('admin_benutzer_deaktivieren', benutzer_id=benutzer_item.id) }}" 
+                                    <form method="POST" action="{{ url_for('admin.user_deaktivieren', benutzer_id=benutzer_item.id) }}" 
                                           style="display:inline;" onsubmit="return confirm('Benutzer wirklich deaktivieren?')">
                                         <button type="submit" class="btn btn-sm btn-outline-warning" title="Deaktivieren">
                                             <i class="bi bi-lock"></i>
                                         </button>
                                     </form>
                                     {% else %}
-                                    <form method="POST" action="{{ url_for('admin_benutzer_aktivieren', benutzer_id=benutzer_item.id) }}" 
+                                    <form method="POST" action="{{ url_for('admin.user_aktivieren', benutzer_id=benutzer_item.id) }}" 
                                           style="display:inline;">
                                         <button type="submit" class="btn btn-sm btn-outline-success" title="Aktivieren">
                                             <i class="bi bi-unlock"></i>

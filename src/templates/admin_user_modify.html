@@ -5,7 +5,7 @@
 {% block content %}
 <div class="row mb-3">
     <div class="col-md-12">
-        <a href="{{ url_for('admin_user') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('admin.user_list') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Zurück zur Übersicht
         </a>
     </div>
@@ -18,7 +18,7 @@
                 <h4><i class="bi bi-pencil"></i> Benutzer bearbeiten</h4>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('admin_user_modify', benutzer_id=benutzer_edit.id) }}">
+                <form method="POST" action="{{ url_for('admin.user_modify', benutzer_id=benutzer_edit.id) }}">
                     <!-- Persönliche Daten -->
                     <h5 class="mb-3"><i class="bi bi-person"></i> Persönliche Daten</h5>
                     
@@ -132,7 +132,7 @@
 
                     <!-- Buttons -->
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('admin_user') }}" class="btn btn-outline-secondary">
+                        <a href="{{ url_for('admin.user_list') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-x-circle"></i> Abbrechen
                         </a>
                         <button type="submit" class="btn btn-primary">

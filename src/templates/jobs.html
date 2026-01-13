@@ -94,16 +94,15 @@
                             <th style="width: 110px;">Datum</th>
                             <th style="width: 70px;">Start</th>
                             <th style="width: 70px;">Ende</th>
-                            <th style="width: 60px;">Pause</th>
+                            <th style="width: 70px;">Pause</th>
                             <th style="width: 70px;">Stunden</th>
                             {% if user_role in ['admin', 'ortsvorsteher'] %}
                             <th style="width: 140px;">Wegewart</th>
                             <th style="width: 110px;">Ortschaft</th>
                             {% endif %}
                             <th>Tätigkeit</th>
-                            <th style="width: 140px;">Maschine</th>
+                            <th style="width: 250px;">Maschine</th>
                             <th style="width: 70px;">Maschinenst.</th>
-        
                             <th style="width: 100px;">Status</th>
                             <th style="width: 100px;">Aktionen</th>
                         </tr>
@@ -148,14 +147,12 @@
                                        value="{{ job['pause'] if job['pause'] else 0 }}" data-field="pause_hours" onchange="calculateHoursInRow(this)">
                             </td>
                             
-                            
                             <!-- Arbeitsstunden (berechnet) -->
                             <td>
                                 <span class="view-mode">{{ job['arbeitsstunden'] }}</span>
                                 <input type="number" step="0.25" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job['arbeitsstunden'] }}" data-field="arbeitsstunden" readonly>
+                                       value="{{ job['arbeitsstunden'] }}" data-field="work_hours" readonly>
                             </td>
-                            
 
                             {% if user_role in ['admin', 'ortsvorsteher'] %}
                             <!-- Wegewart -->
@@ -208,7 +205,7 @@
                             <td>
                                 <span class="view-mode">{{ job['maschinenstunden'] if job['maschinenstunden'] else '0' }}</span>
                                 <input type="number" step="0.25" min="0" class="form-control form-control-sm edit-mode" style="display:none;" 
-                                       value="{{ job['maschinenstunden'] if job['maschinenstunden'] else 0 }}" data-field="maschinenstunden">
+                                       value="{{ job['maschinenstunden'] if job['maschinenstunden'] else 0 }}" data-field="machine_hours">
                             </td>
                             
                             <!-- Status -->
@@ -272,328 +269,26 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+<!-- Page Configuration - Jinja2 data for JavaScript -->
 <script>
-// Pre-render options at page load
-const machineOptionsHTML = `
-    <option value="">Keine</option>
-    {% for machine in machines %}
-    <option value="{{ machine['id'] }}">{{ machine['name'] }}</option>
-    {% endfor %}
-`;
-
-const wegewartenOptionsHTML = `
-    {% for ww in available_wegewarten %}
-    <option value="{{ ww['id'] }}" {% if ww['id'] == current_user_id %}selected{% endif %}>{{ ww['vorname'] }} {{ ww['name'] }}</option>
-    {% endfor %}
-`;
-
-let originalData = {};
-let editingRowId = null;
-
-// Calculate hours helper
-function calculateHours(startTime, endTime, pauseHours) {
-    if (!startTime || !endTime) return 0;
-    
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
-    
-    const totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-    const hours = totalMinutes / 60;
-    const netHours = Math.max(0, hours - (pauseHours || 0));
-    
-    return Math.round(netHours * 2) / 2;
-}
-
-function calculateHoursInRow(element) {
-    const row = element.closest('tr');
-    const startInput = row.querySelector('[data-field="time_start"]');
-    const endInput = row.querySelector('[data-field="time_end"]');
-    const pauseInput = row.querySelector('[data-field="pause_hours"]');
-    const hoursInput = row.querySelector('[data-field="work_hours"]');
-    
-    if (startInput && endInput && hoursInput) {
-        const hours = calculateHours(
-            startInput.value, 
-            endInput.value, 
-            parseFloat(pauseInput?.value || 0)
-        );
-        hoursInput.value = hours.toFixed(1);
-    }
-}
-
-function addNewRow() {
-    const noDataRow = document.getElementById('noDataRow');
-    if (noDataRow) noDataRow.remove();
-    
-    const tbody = document.getElementById('jobsTableBody');
-    const newId = 'new-' + Date.now();
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toTimeString().slice(0, 5);
-    
-    const isOVorAdmin = {{ 'true' if user_role in ['admin', 'ortsvorsteher'] else 'false' }};
-    const checkboxCol = isOVorAdmin ? '<td></td>' : '';
-    const wegewartCols = isOVorAdmin ? `
-        <td>
-            <select class="form-select form-select-sm" data-field="user_id">
-                ${wegewartenOptionsHTML}
-            </select>
-        </td>
-        <td>
-            <input type="text" class="form-control form-control-sm" value="{{ current_user_ortsteil }}" readonly>
-        </td>
-    ` : '';
-    
-    const newRow = `
-        <tr id="row-${newId}" data-job-id="${newId}" class="table-info">
-            ${checkboxCol}
-            <td><input type="date" class="form-control form-control-sm" value="${today}" data-field="date"></td>
-            <td><input type="time" class="form-control form-control-sm" value="" data-field="time_start" onchange="calculateHoursInRow(this)"></td>
-            <td><input type="time" class="form-control form-control-sm" value="" data-field="time_end" onchange="calculateHoursInRow(this)"></td>
-            <td><input type="number" step="0.5" min="0" class="form-control form-control-sm" value="0" data-field="pause_hours" onchange="calculateHoursInRow(this)"></td>
-            <td><input type="number" step="0.5" class="form-control form-control-sm" value="0" data-field="work_hours" readonly></td>
-            ${wegewartCols}
-            {% if user_role not in ['admin', 'ortsvorsteher'] %}
-            <input type="hidden" data-field="user_id" value="{{ current_user_id }}">
-            {% endif %}
-            <td><input type="text" class="form-control form-control-sm" placeholder="Tätigkeit" data-field="work_comment"></td>
-            <td>
-                <select class="form-select form-select-sm" data-field="machine_id">
-                    ${machineOptionsHTML}
-                </select>
-            </td>
-            <td><input type="number" step="0.5" min="0" class="form-control form-control-sm" value="0" data-field="machine_hours"></td>
-            <td>
-                <select class="form-select form-select-sm" data-field="status">
-                    <option value="erfasst" selected>Erfasst</option>
-                    {% if user_role in ['admin', 'ortsvorsteher'] %}
-                    <option value="freigegeben">Freigegeben</option>
-                    <option value="abgelehnt">Abgelehnt</option>
-                    {% endif %}
-                </select>
-            </td>
-            <td>
-                <button class="btn btn-sm btn-success" onclick="saveNewRow('${newId}')">
-                    <i class="bi bi-check"></i>
-                </button>
-                <button class="btn btn-sm btn-secondary" onclick="cancelNewRow('${newId}')">
-                    <i class="bi bi-x"></i>
-                </button>
-            </td>
-        </tr>
-    `;
-    
-    tbody.insertAdjacentHTML('afterbegin', newRow);
-}
-
-function editRow(jobId) {
-    if (editingRowId && editingRowId !== jobId) {
-        alert('Bitte speichern oder abbrechen Sie die aktuelle Bearbeitung zuerst.');
-        return;
-    }
-    
-    const row = document.querySelector(`#row-${jobId}`);
-    const viewElements = row.querySelectorAll('.view-mode');
-    const editElements = row.querySelectorAll('.edit-mode');
-    
-    originalData[jobId] = {};
-    editElements.forEach(el => {
-        if (el.dataset.field) {
-            originalData[jobId][el.dataset.field] = el.value;
+    const PAGE_CONFIG = {
+        isOVorAdmin: {{ 'true' if user_role in ['admin', 'ortsvorsteher'] else 'false' }},
+        currentUserId: "{{ current_user_id }}",
+        currentUserOrtsteil: "{{ current_user_ortsteil }}",
+        machines: {{ machines | tojson }},
+        wegewarten: {{ available_wegewarten | tojson }},
+        urls: {
+            update: "{{ url_for('jobs.update_job') }}",
+            create: "{{ url_for('jobs.create_job') }}",
+            delete: "{{ url_for('jobs.delete_job') }}",
+            approve: "{{ url_for('jobs.approve_jobs') }}",
+            reject: "{{ url_for('jobs.reject_jobs') }}"
         }
-    });
-    
-    viewElements.forEach(el => el.style.display = 'none');
-    editElements.forEach(el => el.style.display = 'block');
-    
-    editingRowId = jobId;
-}
-
-function cancelEdit(jobId) {
-    const row = document.querySelector(`#row-${jobId}`);
-    const viewElements = row.querySelectorAll('.view-mode');
-    const editElements = row.querySelectorAll('.edit-mode');
-    
-    if (originalData[jobId]) {
-        editElements.forEach(el => {
-            if (el.dataset.field && originalData[jobId][el.dataset.field] !== undefined) {
-                el.value = originalData[jobId][el.dataset.field];
-            }
-        });
-    }
-    
-    viewElements.forEach(el => el.style.display = 'block');
-    editElements.forEach(el => el.style.display = 'none');
-    
-    editingRowId = null;
-}
-
-function saveRow(jobId) {
-    const row = document.querySelector(`#row-${jobId}`);
-    const editElements = row.querySelectorAll('.edit-mode[data-field], .edit-mode [data-field]');
-    
-    const data = { job_id: jobId };
-    editElements.forEach(el => {
-        if (el.dataset.field) {
-            data[el.dataset.field] = el.value;
-        }
-    });
-    
-    fetch("{{ url_for('jobs.update_job') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Fehler beim Speichern: ' + result.message);
-        }
-    })
-    .catch(error => alert('Fehler beim Speichern: ' + error));
-}
-
-function saveNewRow(tempId) {
-    const row = document.querySelector(`#row-${tempId}`);
-    const inputs = row.querySelectorAll('[data-field]');
-    
-    const data = {};
-    inputs.forEach(input => {
-        data[input.dataset.field] = input.value;
-    });
-    
-    if (!data.date || !data.work_comment) {
-        alert('Bitte füllen Sie Datum und Tätigkeit aus.');
-        return;
-    }
-    
-    if (!data.time_start || !data.time_end) {
-        alert('Bitte geben Sie Start- und Endzeit ein.');
-        return;
-    }
-    
-    fetch("{{ url_for('jobs.create_job') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Fehler beim Erstellen: ' + result.message);
-        }
-    })
-    .catch(error => alert('Fehler beim Erstellen: ' + error));
-}
-
-function cancelNewRow(tempId) {
-    const row = document.querySelector(`#row-${tempId}`);
-    row.remove();
-    
-    const tbody = document.getElementById('jobsTableBody');
-    if (tbody.children.length === 0) {
-        const isOVorAdmin = {{ 'true' if user_role in ['admin', 'ortsvorsteher'] else 'false' }};
-        const colspan = isOVorAdmin ? '13' : '11';
-        tbody.innerHTML = `<tr id="noDataRow"><td colspan="${colspan}" class="text-center text-muted">Keine Arbeitseinsätze gefunden.</td></tr>`;
-    }
-}
-
-function deleteRow(jobId) {
-    if (!confirm('Möchten Sie diesen Einsatz wirklich löschen?')) return;
-    
-    fetch("{{ url_for('jobs.delete_job') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: jobId })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Fehler beim Löschen: ' + result.message);
-        }
-    })
-    .catch(error => alert('Fehler beim Löschen: ' + error));
-}
-
-function toggleSelectAll() {
-    const selectAll = document.getElementById('selectAll');
-    const checkboxes = document.querySelectorAll('.job-checkbox');
-    checkboxes.forEach(cb => cb.checked = selectAll.checked);
-    updateSelectedCount();
-}
-
-function updateSelectedCount() {
-    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
-    const count = checkboxes.length;
-    document.getElementById('selectedCount').textContent = count + ' ausgewählt';
-    document.getElementById('approveBtn').disabled = count === 0;
-    document.getElementById('rejectBtn').disabled = count === 0;
-}
-
-function approveSelected() {
-    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
-    const jobIds = Array.from(checkboxes).map(cb => cb.value);
-    
-    if (jobIds.length === 0) {
-        alert('Bitte wählen Sie mindestens einen Einsatz aus.');
-        return;
-    }
-    
-    if (!confirm(`Möchten Sie ${jobIds.length} Einsatz/Einsätze wirklich freigeben?`)) return;
-    
-    fetch("{{ url_for('jobs.approve_jobs') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_ids: jobIds })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Fehler beim Freigeben: ' + result.message);
-        }
-    })
-    .catch(error => alert('Fehler beim Freigeben: ' + error));
-}
-
-function rejectSelected() {
-    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
-    const jobIds = Array.from(checkboxes).map(cb => cb.value);
-    
-    if (jobIds.length === 0) {
-        alert('Bitte wählen Sie mindestens einen Einsatz aus.');
-        return;
-    }
-    
-    const reason = prompt('Grund für Ablehnung (optional):');
-    if (reason === null) return;
-    
-    if (!confirm(`Möchten Sie ${jobIds.length} Einsatz/Einsätze wirklich ablehnen?`)) return;
-    
-    fetch("{{ url_for('jobs.reject_jobs') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            job_ids: jobIds,
-            rejection_reason: reason 
-        })
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            location.reload();
-        } else {
-            alert('Fehler beim Ablehnen: ' + result.message);
-        }
-    })
-    .catch(error => alert('Fehler beim Ablehnen: ' + error));
-}
+    };
 </script>
+<!-- External JavaScript -->
+<script src="{{ url_for('static', filename='js/jobs.js') }}"></script>
 {% endblock %}

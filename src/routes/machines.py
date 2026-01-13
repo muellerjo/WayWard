@@ -1,22 +1,14 @@
 """
 Machines Routes Blueprint for Wegewart System
 """
-from flask import Blueprint, render_template, request, jsonify, g, redirect, url_for, session, flash
-from functools import wraps
+from flask import Blueprint, render_template, request, jsonify, g
+
+from wayward_db import get_db
+from utils.decorators import login_required
 
 # Create Blueprint
 machines_bp = Blueprint('machines', __name__)
 
-# Decorator for login required
-def login_required(f):
-    """Decorator für geschützte Routen"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            flash('Bitte zuerst einloggen', 'warning')
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 # Helper functions
 def get_user_roles(user):
@@ -25,10 +17,12 @@ def get_user_roles(user):
         return []
     return [role.strip() for role in user['roles'].split(',')]
 
+
 def can_user_manage_machines(user):
     """Check if user can manage machines"""
     roles = get_user_roles(user)
     return 'admin' in roles or 'ortsvorsteher' in roles
+
 
 # Routes
 
@@ -36,7 +30,6 @@ def can_user_manage_machines(user):
 @login_required
 def machines():
     """Display machines page"""
-    from wayward_db import get_db
     db = get_db()
     
     roles = get_user_roles(g.user)
@@ -72,7 +65,11 @@ def machines():
     machines_list = cursor.fetchall()
     
     # Get unique categories for filter
-    cursor = db.execute('SELECT DISTINCT category FROM machines WHERE category IS NOT NULL AND category != "" ORDER BY category')
+    cursor = db.execute('''
+        SELECT DISTINCT category FROM machines 
+        WHERE category IS NOT NULL AND category != "" 
+        ORDER BY category
+    ''')
     categories = [row['category'] for row in cursor.fetchall()]
     
     return render_template('machines.html',
@@ -86,7 +83,6 @@ def machines():
 @login_required
 def create_machine():
     """Create a new machine"""
-    from wayward_db import get_db
     db = get_db()
     
     try:
@@ -130,7 +126,6 @@ def create_machine():
 @login_required
 def update_machine():
     """Update an existing machine"""
-    from wayward_db import get_db
     db = get_db()
     
     try:
@@ -195,7 +190,6 @@ def update_machine():
 @login_required
 def delete_machine():
     """Delete a machine"""
-    from wayward_db import get_db
     db = get_db()
     
     try:
@@ -214,7 +208,7 @@ def delete_machine():
             return jsonify({'success': False, 'message': 'Maschine nicht gefunden'}), 404
         
         # Check if machine is used in any jobs
-        cursor = db.execute('SELECT COUNT(*) as count FROM jobs WHERE machine_used = ?', (machine_id,))
+        cursor = db.execute('SELECT COUNT(*) as count FROM jobs WHERE machine_id = ?', (machine_id,))
         usage_count = cursor.fetchone()['count']
         
         if usage_count > 0:
